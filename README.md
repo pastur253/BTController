@@ -36,6 +36,18 @@
 - **Поиск новых устройств (Bluetooth Discovery)**: встроенный сканер ближайших Bluetooth-устройств с возможностью сопряжения в один тап.
 - **Управление разрешениями**: адаптивная поддержка Android 12+ (API 31–36, `BLUETOOTH_CONNECT`, `BLUETOOTH_SCAN`) и Android 8–11 (`BLUETOOTH`, `BLUETOOTH_ADMIN`, `ACCESS_FINE_LOCATION`).
 
+### 3. Автообновление из удаленного репозитория (GitHub Releases)
+- **Автоматическая проверка**: при запуске приложение проверяет наличие свежих релизов в GitHub-репозитории `pastur253/BTController`.
+- **Ручная проверка**: кнопка обновления в шапке (TopAppBar) и карточка версии внизу экрана с индикатором новых версий.
+- **Интерактивный диалог**:
+  - Показывает разницу версий (текущая ➔ новая).
+  - Отображает список изменений (Changelog / Release notes) и размер APK-файла.
+  - Опции: «Скачать и установить», «Пропустить эту версию», «Напомнить позже», «Открыть на GitHub».
+- **Загрузка и установка**:
+  - Фоновая загрузка APK с отображением прогресса (в процентах и мегабайтах).
+  - Корректная обработка редиректов GitHub Releases / CDN.
+  - Безопасная установка через `FileProvider` (`content://`) и запрос разрешения `REQUEST_INSTALL_PACKAGES` на Android 8.0+.
+
 ---
 
 ## 🏗 Архитектура проекта
@@ -57,15 +69,23 @@ BTController/
 │   │   │   │   ├── BluetoothWidgetProvider.kt    # AppWidgetProvider (обновление, PendingIntent)
 │   │   │   │   ├── BluetoothWidgetService.kt     # RemoteViewsService & Factory для списка ListView
 │   │   │   │   └── WidgetActionReceiver.kt       # Обработка кликов «Вкл/Откл» из виджета
+│   │   │   ├── update/
+│   │   │   │   ├── ReleaseInfo.kt                # Модели данных релиза и состояния обновления (UpdateState)
+│   │   │   │   ├── UpdateChecker.kt              # Запрос к GitHub Releases API и семантическое сравнение версий
+│   │   │   │   ├── UpdateDownloader.kt           # Асинхронное скачивание APK с подсчетом прогресса
+│   │   │   │   ├── UpdateInstaller.kt            # Установка APK через FileProvider и проверка разрешений
+│   │   │   │   ├── UpdateManager.kt              # Координатор автообновления и StateFlow
+│   │   │   │   └── UpdatePreferences.kt          # Настройки (пропуск версий, интервалы)
 │   │   │   └── ui/
 │   │   │       ├── MainActivity.kt               # Jetpack Compose UI
 │   │   │       ├── MainViewModel.kt              # StateFlow и взаимодействие с контроллером
+│   │   │       ├── UpdateDialog.kt               # UI модального окна загрузки и установки обновления
 │   │   │       └── theme/                        # Тема, цвета и типографика Material 3
 │   │   └── res/
 │   │       ├── drawable/                         # Векторные иконки, стили кнопок и фон виджета
 │   │       ├── layout/                           # XML-разметка виджета (widget_layout, widget_device_item)
 │   │       ├── values/                           # Строки, цвета
-│   │       └── xml/                              # Метаданные виджета (bluetooth_widget_info.xml)
+│   │       └── xml/                              # Метаданные виджета и file_paths для FileProvider
 ```
 
 ---

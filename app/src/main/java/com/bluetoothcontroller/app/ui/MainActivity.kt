@@ -2,6 +2,7 @@ package com.bluetoothcontroller.app.ui
 
 import android.Manifest
 import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
@@ -26,6 +27,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -36,6 +38,8 @@ import com.bluetoothcontroller.app.R
 import com.bluetoothcontroller.app.data.BluetoothDeviceModel
 import com.bluetoothcontroller.app.data.DeviceType
 import com.bluetoothcontroller.app.ui.theme.*
+import com.bluetoothcontroller.app.update.UpdateInstaller
+import com.bluetoothcontroller.app.update.UpdateState
 
 class MainActivity : ComponentActivity() {
 
@@ -91,6 +95,15 @@ fun MainScreen(
     val widgetDevices by viewModel.widgetDevices.collectAsState()
     val pairedDevices by viewModel.pairedDevices.collectAsState()
     val discoveredDevices by viewModel.discoveredDevices.collectAsState()
+    val updateState by viewModel.updateState.collectAsState()
+
+    val context = LocalContext.current
+
+    val installPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) {
+        // Returned from system settings for unknown app install permission
+    }
 
     var localWidgetDevices by remember { mutableStateOf(widgetDevices) }
     var draggingAddress by remember { mutableStateOf<String?>(null) }
@@ -158,6 +171,8 @@ fun MainScreen(
         if (!hasPermissions) {
             onRequestPermissions(permissionLauncher)
         }
+        // Auto-check for updates from remote repository on launch
+        viewModel.checkForUpdates(isManual = false)
     }
 
     Scaffold(
@@ -195,10 +210,29 @@ fun MainScreen(
                     IconButton(onClick = { viewModel.refresh() }) {
                         Icon(
                             painter = painterResource(R.drawable.ic_refresh),
-                            contentDescription = "Обновить",
+                            contentDescription = "Обновить список",
                             tint = PrimaryBlue,
                             modifier = Modifier.size(24.dp)
                         )
+                    }
+                    IconButton(onClick = { viewModel.checkForUpdates(isManual = true) }) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_system_update),
+                                contentDescription = "Проверить обновления",
+                                tint = PrimaryBlue,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            if (updateState is UpdateState.Available) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(8.dp)
+                                        .clip(CircleShape)
+                                        .background(ErrorRed)
+                                        .align(Alignment.TopEnd)
+                                )
+                            }
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -322,6 +356,99 @@ fun MainScreen(
                         onPair = { viewModel.pairDevice(device.address) }
                     )
                 }
+            }
+
+            // SECTION 4: APP INFO & UPDATES
+            item {
+                AppVersionCard(
+                    versionName = viewModel.currentVersionName,
+                    onCheckUpdates = { viewModel.checkForUpdates(isManual = true) }
+                )
+            }
+        }
+    }
+
+    // Auto-update dialog modal
+    UpdateDialog(
+        state = updateState,
+        currentVersion = viewModel.currentVersionName,
+        canInstallPackages = viewModel.canRequestPackageInstalls(),
+        onDownload = { releaseInfo -> viewModel.startUpdateDownload(releaseInfo) },
+        onCancelDownload = { viewModel.cancelUpdateDownload() },
+        onInstall = { file ->
+            val result = viewModel.installUpdate(file)
+            if (result is UpdateInstaller.InstallResult.PermissionRequired) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    installPermissionLauncher.launch(
+                        Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:${context.packageName}"))
+                    )
+                }
+            }
+        },
+        onRequestInstallPermission = {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                installPermissionLauncher.launch(
+                    Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:${context.packageName}"))
+                )
+            }
+        },
+        onDismiss = { ignoreVersion -> viewModel.dismissUpdate(ignoreVersion) },
+        onRetry = { viewModel.checkForUpdates(isManual = true) }
+    )
+}
+
+@Composable
+fun AppVersionCard(
+    versionName: String,
+    onCheckUpdates: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp, bottom = 16.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column {
+                Text(
+                    text = "BT Controller v$versionName",
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = "GitHub: pastur253/BTController",
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            OutlinedButton(
+                onClick = onCheckUpdates,
+                shape = RoundedCornerShape(10.dp),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_system_update),
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                    tint = PrimaryBlue
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = "Обновить",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = PrimaryBlue
+                )
             }
         }
     }
