@@ -1,5 +1,6 @@
 # BT Controller (Android App & Widget)
 
+[![Android CI](https://github.com/pastur253/BTController/actions/workflows/android.yml/badge.svg)](https://github.com/pastur253/BTController/actions/workflows/android.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Android](https://img.shields.io/badge/Android-8.0%2B%20(API%2026--36)-brightgreen.svg)](https://developer.android.com)
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.0.21-purple.svg)](https://kotlinlang.org)
@@ -11,7 +12,7 @@
 
 ## 📥 Скачать приложение
 
-Готовые APK-файлы доступны на вкладке **[Releases](../../releases)**:
+Готовые APK-файлы доступны в разделе **[Releases](https://github.com/pastur253/BTController/releases)**:
 - **`BTController-release.apk`** — оптимизированная релизная версия приложения.
 - **`BTController-debug.apk`** — отладочная сборка.
 
