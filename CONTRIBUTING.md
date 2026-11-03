@@ -13,7 +13,7 @@
 1. Сделайте Fork репозитория.
 2. Клонируйте форк себе на компьютер:
    ```bash
-   git clone https://github.com/<ваш-аккаунт>/BTController.git
+   git clone https://github.com/pastur253/BTController.git
    cd BTController
    ```
 3. Откройте проект в **Android Studio Ladybug** (или новее). Рекомендуемая версия JDK — 17+.
