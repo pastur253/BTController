@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">BT Controller</string>
+    <string name="widget_name">Bluetooth Устройства</string>
+    <string name="widget_description">Виджет для быстрого подключения и отключения Bluetooth устройств</string>
+    <string name="widget_empty_text">Нет добавленных устройств.\nНажмите здесь, чтобы добавить устройства в приложении.</string>
+    <string name="widget_title">Bluetooth</string>
+    <string name="btn_connect">Вкл</string>
+    <string name="btn_disconnect">Откл</string>
+    <string name="status_connected">Подключено</string>
+    <string name="status_disconnected">Отключено</string>
+    <string name="status_connecting">Подключение...</string>
+    <string name="status_disconnecting">Отключение...</string>
+</resources>
