@@ -31,9 +31,9 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Build Debug & Release APK
+      - name: Build Release APK
         run: |
-          ./gradlew assembleDebug assembleRelease --stacktrace 2>&1 | tee build.log || {
+          ./gradlew assembleRelease --stacktrace 2>&1 | tee build.log || {
             echo "### Build Failed" >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
             tail -n 80 build.log >> $GITHUB_STEP_SUMMARY
@@ -41,17 +41,10 @@ jobs:
             exit 1
           }
 
-      - name: Rename APKs for release
+      - name: Prepare APK for release
         run: |
           mkdir -p release-apks
           find app/build/outputs/apk/release -name "*.apk" -exec cp {} release-apks/BTController-release.apk \;
-          find app/build/outputs/apk/debug -name "*.apk" -exec cp {} release-apks/BTController-debug.apk \;
-
-      - name: Upload Debug APK Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: BTController-debug
-          path: release-apks/BTController-debug.apk
 
       - name: Upload Release APK Artifact
         uses: actions/upload-artifact@v4
@@ -65,7 +58,6 @@ jobs:
         with:
           files: |
             release-apks/BTController-release.apk
-            release-apks/BTController-debug.apk
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

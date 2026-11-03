@@ -12,9 +12,8 @@
 
 ## 📥 Скачать приложение
 
-Готовые APK-файлы доступны в разделе **[Releases](https://github.com/pastur253/BTController/releases)**:
-- **`BTController-release.apk`** — оптимизированная релизная версия приложения.
-- **`BTController-debug.apk`** — отладочная сборка.
+Готовый APK-файл доступен в разделе **[Releases](https://github.com/pastur253/BTController/releases)**:
+- **`BTController-release.apk`** — актуальная релизная версия приложения.
 
 ---
 
