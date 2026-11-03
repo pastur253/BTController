@@ -34,25 +34,31 @@ jobs:
       - name: Build Debug & Release APK
         run: ./gradlew assembleDebug assembleRelease --stacktrace
 
+      - name: Rename APKs for release
+        run: |
+          mkdir -p release-apks
+          find app/build/outputs/apk/release -name "*.apk" -exec cp {} release-apks/BTController-release.apk \;
+          find app/build/outputs/apk/debug -name "*.apk" -exec cp {} release-apks/BTController-debug.apk \;
+
       - name: Upload Debug APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: BTController-debug
-          path: app/build/outputs/apk/debug/*.apk
+          path: release-apks/BTController-debug.apk
 
       - name: Upload Release APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: BTController-release
-          path: app/build/outputs/apk/release/*.apk
+          path: release-apks/BTController-release.apk
 
       - name: Publish GitHub Release (On Tag)
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            app/build/outputs/apk/release/*.apk
-            app/build/outputs/apk/debug/*.apk
+            release-apks/BTController-release.apk
+            release-apks/BTController-debug.apk
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
