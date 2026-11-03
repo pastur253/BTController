@@ -84,8 +84,12 @@
             <intent-filter>
                 <action android:name="android.bluetooth.adapter.action.STATE_CHANGED" />
                 <action android:name="android.bluetooth.adapter.action.CONNECTION_STATE_CHANGED" />
+                <action android:name="android.bluetooth.adapter.action.LOCAL_NAME_CHANGED" />
                 <action android:name="android.bluetooth.device.action.ACL_CONNECTED" />
                 <action android:name="android.bluetooth.device.action.ACL_DISCONNECTED" />
+                <action android:name="android.bluetooth.device.action.NAME_CHANGED" />
+                <action android:name="android.bluetooth.device.action.ALIAS_CHANGED" />
+                <action android:name="android.bluetooth.device.action.BOND_STATE_CHANGED" />
                 <action android:name="android.bluetooth.a2dp.profile.action.CONNECTION_STATE_CHANGED" />
                 <action android:name="android.bluetooth.headset.profile.action.CONNECTION_STATE_CHANGED" />
                 <action android:name="android.intent.action.BOOT_COMPLETED" />

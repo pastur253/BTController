@@ -24,15 +24,15 @@ class BluetoothWidgetItemFactory(private val context: Context) :
     private val btController = BluetoothController.getInstance(context)
 
     override fun onCreate() {
-        loadDevices()
+        loadDevices(forceRefresh = false)
     }
 
     override fun onDataSetChanged() {
-        loadDevices()
+        loadDevices(forceRefresh = true)
     }
 
-    private fun loadDevices() {
-        devices = btController.widgetDevices.value
+    private fun loadDevices(forceRefresh: Boolean = false) {
+        devices = btController.getWidgetDevicesSnapshot(forceRefresh)
     }
 
     override fun onDestroy() {

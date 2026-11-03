@@ -25,8 +25,18 @@ class BluetoothConnectionReceiver : BroadcastReceiver() {
                 address?.let { btController.clearTransitionState(it) }
                 btController.refreshDevices()
             }
+            BluetoothDevice.ACTION_NAME_CHANGED,
+            "android.bluetooth.device.action.ALIAS_CHANGED" -> {
+                val extraName = intent.getStringExtra(BluetoothDevice.EXTRA_NAME)
+                if (!address.isNullOrBlank() && !extraName.isNullOrBlank()) {
+                    com.bluetoothcontroller.app.data.WidgetPreferences(context).saveDeviceName(address, extraName)
+                }
+                btController.refreshDevices()
+            }
+            BluetoothDevice.ACTION_BOND_STATE_CHANGED,
             BluetoothAdapter.ACTION_STATE_CHANGED,
             BluetoothAdapter.ACTION_CONNECTION_STATE_CHANGED,
+            BluetoothAdapter.ACTION_LOCAL_NAME_CHANGED,
             "android.bluetooth.a2dp.profile.action.CONNECTION_STATE_CHANGED",
             "android.bluetooth.headset.profile.action.CONNECTION_STATE_CHANGED",
             Intent.ACTION_BOOT_COMPLETED -> {

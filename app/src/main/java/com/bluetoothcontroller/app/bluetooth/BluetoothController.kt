@@ -113,6 +113,23 @@ class BluetoothController(private val context: Context) {
                     }
                     device?.let { addDiscoveredDevice(it) }
                 }
+                BluetoothDevice.ACTION_NAME_CHANGED,
+                "android.bluetooth.device.action.ALIAS_CHANGED" -> {
+                    val device: BluetoothDevice? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE, BluetoothDevice::class.java)
+                    } else {
+                        @Suppress("DEPRECATION")
+                        intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
+                    }
+                    val extraName = intent.getStringExtra(BluetoothDevice.EXTRA_NAME)
+                    if (device != null && !extraName.isNullOrBlank()) {
+                        widgetPrefs.saveDeviceName(device.address, extraName)
+                    }
+                    refreshDevices()
+                }
+                BluetoothDevice.ACTION_BOND_STATE_CHANGED -> {
+                    refreshDevices()
+                }
                 BluetoothAdapter.ACTION_DISCOVERY_STARTED -> {
                     _isScanning.value = true
                 }
@@ -155,6 +172,9 @@ class BluetoothController(private val context: Context) {
     private fun registerScanReceiver() {
         val filter = IntentFilter().apply {
             addAction(BluetoothDevice.ACTION_FOUND)
+            addAction(BluetoothDevice.ACTION_NAME_CHANGED)
+            addAction("android.bluetooth.device.action.ALIAS_CHANGED")
+            addAction(BluetoothDevice.ACTION_BOND_STATE_CHANGED)
             addAction(BluetoothAdapter.ACTION_DISCOVERY_STARTED)
             addAction(BluetoothAdapter.ACTION_DISCOVERY_FINISHED)
         }
@@ -165,13 +185,112 @@ class BluetoothController(private val context: Context) {
         }
     }
 
+    fun getDeviceDisplayName(device: BluetoothDevice): String {
+        val address = device.address
+
+        // 1. In Android 11+ (API 30+), getAlias() returns the user-customized name from Settings
+        val alias: String? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            try {
+                device.alias
+            } catch (_: SecurityException) {
+                null
+            } catch (_: Throwable) {
+                null
+            }
+        } else {
+            try {
+                val method = device.javaClass.getMethod("getAlias")
+                method.invoke(device) as? String
+            } catch (_: Throwable) {
+                null
+            }
+        }
+
+        // 2. Hardware / broadcasted Bluetooth name
+        val rawName: String? = try {
+            device.name
+        } catch (_: SecurityException) {
+            null
+        } catch (_: Throwable) {
+            null
+        }
+
+        val effectiveName = alias?.trim()?.takeIf { it.isNotEmpty() }
+            ?: rawName?.trim()?.takeIf { it.isNotEmpty() }
+            ?: widgetPrefs.getDeviceName(address)
+            ?: address
+
+        if (effectiveName != address) {
+            widgetPrefs.saveDeviceName(address, effectiveName)
+        }
+
+        return effectiveName
+    }
+
+    fun getWidgetDevicesSnapshot(forceRefresh: Boolean = false): List<BluetoothDeviceModel> {
+        if (!forceRefresh) {
+            val current = _widgetDevices.value
+            if (current.isNotEmpty()) {
+                return current
+            }
+        }
+
+        val widgetAddresses = widgetPrefs.getWidgetDeviceAddresses()
+        if (widgetAddresses.isEmpty()) return emptyList()
+
+        val bonded = try {
+            if (hasPermissions()) bluetoothAdapter?.bondedDevices ?: emptySet() else emptySet()
+        } catch (_: Exception) {
+            emptySet()
+        }
+        val bondedMap = bonded.associateBy { it.address }
+        val connecting = _connectingAddresses.value
+        val disconnecting = _disconnectingAddresses.value
+
+        val list = widgetAddresses.map { addr ->
+            val device = bondedMap[addr]
+            val name = if (device != null) {
+                getDeviceDisplayName(device)
+            } else {
+                widgetPrefs.getDeviceName(addr) ?: addr
+            }
+            val isConnected = device?.let { isDeviceConnected(it) } ?: false
+            val deviceType = device?.let { resolveDeviceType(it) } ?: DeviceType.OTHER
+
+            BluetoothDeviceModel(
+                address = addr,
+                name = name,
+                isConnected = isConnected,
+                isConnecting = connecting.contains(addr),
+                isDisconnecting = disconnecting.contains(addr),
+                isInWidget = true,
+                deviceType = deviceType
+            )
+        }
+        _widgetDevices.value = list
+        return list
+    }
+
     fun refreshDevices() {
         scope.launch {
             refreshMutex.withLock {
                 _isBluetoothEnabled.value = bluetoothAdapter?.isEnabled == true
                 if (!hasPermissions() || bluetoothAdapter == null || !bluetoothAdapter.isEnabled) {
                     _pairedDevices.value = emptyList()
-                    _widgetDevices.value = emptyList()
+                    val widgetAddresses = widgetPrefs.getWidgetDeviceAddresses()
+                    val fallbackList = widgetAddresses.map { addr ->
+                        val savedName = widgetPrefs.getDeviceName(addr) ?: addr
+                        BluetoothDeviceModel(
+                            address = addr,
+                            name = savedName,
+                            isConnected = false,
+                            isConnecting = false,
+                            isDisconnecting = false,
+                            isInWidget = true,
+                            deviceType = DeviceType.OTHER
+                        )
+                    }
+                    _widgetDevices.value = fallbackList
                     return@withLock
                 }
 
@@ -187,8 +306,7 @@ class BluetoothController(private val context: Context) {
                         val isConnecting = connecting.contains(address)
                         val isDisconnecting = disconnecting.contains(address)
                         val isInWidget = widgetAddresses.contains(address)
-                        val savedName = widgetPrefs.getDeviceName(address)
-                        val displayName = savedName ?: device.name ?: address
+                        val displayName = getDeviceDisplayName(device)
                         val deviceType = resolveDeviceType(device)
 
                         BluetoothDeviceModel(
@@ -552,7 +670,8 @@ class BluetoothController(private val context: Context) {
 
         val currentList = _discoveredDevices.value.toMutableList()
         if (currentList.none { it.address == address }) {
-            val name = device.name ?: "Новое устройство (${address.takeLast(5)})"
+            val name = getDeviceDisplayName(device).takeIf { it != address }
+                ?: "Новое устройство (${address.takeLast(5)})"
             currentList.add(
                 BluetoothDeviceModel(
                     address = address,
