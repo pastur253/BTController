@@ -23,13 +23,9 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.bluetoothcontroller.app.R
-import com.bluetoothcontroller.app.ui.theme.DarkCardBackground
-import com.bluetoothcontroller.app.ui.theme.DarkDivider
-import com.bluetoothcontroller.app.ui.theme.DarkTextPrimary
-import com.bluetoothcontroller.app.ui.theme.DarkTextSecondary
 import com.bluetoothcontroller.app.ui.theme.ErrorRed
 import com.bluetoothcontroller.app.ui.theme.PrimaryBlue
-import com.bluetoothcontroller.app.ui.theme.SuccessGreen
+import com.bluetoothcontroller.app.ui.theme.StatusConnected
 import com.bluetoothcontroller.app.update.ReleaseInfo
 import com.bluetoothcontroller.app.update.UpdateState
 import java.io.File
@@ -399,13 +395,13 @@ private fun ReadyToInstallContent(
         modifier = Modifier
             .size(56.dp)
             .clip(CircleShape)
-            .background(SuccessGreen.copy(alpha = 0.15f)),
+            .background(StatusConnected.copy(alpha = 0.15f)),
         contentAlignment = Alignment.Center
     ) {
         Icon(
             painter = painterResource(R.drawable.ic_system_update),
             contentDescription = null,
-            tint = SuccessGreen,
+            tint = StatusConnected,
             modifier = Modifier.size(30.dp)
         )
     }
@@ -466,7 +462,7 @@ private fun ReadyToInstallContent(
         onClick = onInstall,
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
-        colors = ButtonDefaults.buttonColors(containerColor = SuccessGreen)
+        colors = ButtonDefaults.buttonColors(containerColor = StatusConnected)
     ) {
         Icon(
             painter = painterResource(R.drawable.ic_system_update),
@@ -496,13 +492,13 @@ private fun UpToDateContent(
         modifier = Modifier
             .size(56.dp)
             .clip(CircleShape)
-            .background(SuccessGreen.copy(alpha = 0.15f)),
+            .background(StatusConnected.copy(alpha = 0.15f)),
         contentAlignment = Alignment.Center
     ) {
         Icon(
             painter = painterResource(R.drawable.ic_system_update),
             contentDescription = null,
-            tint = SuccessGreen,
+            tint = StatusConnected,
             modifier = Modifier.size(30.dp)
         )
     }
