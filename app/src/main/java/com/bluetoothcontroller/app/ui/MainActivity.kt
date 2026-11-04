@@ -12,6 +12,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -96,6 +97,8 @@ fun MainScreen(
     val pairedDevices by viewModel.pairedDevices.collectAsState()
     val discoveredDevices by viewModel.discoveredDevices.collectAsState()
     val updateState by viewModel.updateState.collectAsState()
+
+    var showAboutDialog by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
 
@@ -215,11 +218,11 @@ fun MainScreen(
                             modifier = Modifier.size(24.dp)
                         )
                     }
-                    IconButton(onClick = { viewModel.checkForUpdates(isManual = true) }) {
+                    IconButton(onClick = { showAboutDialog = true }) {
                         Box(contentAlignment = Alignment.Center) {
                             Icon(
-                                painter = painterResource(R.drawable.ic_system_update),
-                                contentDescription = "Проверить обновления",
+                                painter = painterResource(R.drawable.ic_info),
+                                contentDescription = "О приложении",
                                 tint = PrimaryBlue,
                                 modifier = Modifier.size(24.dp)
                             )
@@ -358,15 +361,26 @@ fun MainScreen(
                 }
             }
 
-            // SECTION 4: APP INFO & UPDATES
+            // SECTION 4: APP INFO
             item {
                 AppVersionCard(
                     versionName = viewModel.currentVersionName,
-                    onCheckUpdates = { viewModel.checkForUpdates(isManual = true) }
+                    onOpenAbout = { showAboutDialog = true }
                 )
             }
         }
     }
+
+    // About dialog modal
+    AboutDialog(
+        isOpen = showAboutDialog,
+        versionName = viewModel.currentVersionName,
+        developerName = "PasturTheFox",
+        githubUrl = "https://github.com/pastur253/BTController",
+        updateState = updateState,
+        onCheckUpdates = { viewModel.checkForUpdates(isManual = true) },
+        onDismiss = { showAboutDialog = false }
+    )
 
     // Auto-update dialog modal
     UpdateDialog(
@@ -400,12 +414,14 @@ fun MainScreen(
 @Composable
 fun AppVersionCard(
     versionName: String,
-    onCheckUpdates: () -> Unit
+    onOpenAbout: () -> Unit
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 8.dp, bottom = 16.dp),
+            .padding(top = 8.dp, bottom = 16.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .clickable { onOpenAbout() },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
@@ -432,19 +448,19 @@ fun AppVersionCard(
                 )
             }
             OutlinedButton(
-                onClick = onCheckUpdates,
+                onClick = onOpenAbout,
                 shape = RoundedCornerShape(10.dp),
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
             ) {
                 Icon(
-                    painter = painterResource(R.drawable.ic_system_update),
+                    painter = painterResource(R.drawable.ic_info),
                     contentDescription = null,
                     modifier = Modifier.size(16.dp),
                     tint = PrimaryBlue
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
-                    text = "Обновить",
+                    text = "О приложении",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium,
                     color = PrimaryBlue
