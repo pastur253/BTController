@@ -36,7 +36,10 @@ jobs:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
         run: |
           if [ -n "$KEYSTORE_BASE64" ]; then
-            echo "$KEYSTORE_BASE64" | base64 --decode > release.jks
+            echo "$KEYSTORE_BASE64" | base64 -d --ignore-garbage > release.jks
+            echo "Keystore decoded successfully"
+          else
+            echo "KEYSTORE_BASE64 is empty or not set, will fallback to debug signing"
           fi
 
       - name: Build Release APK
