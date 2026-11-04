@@ -2,6 +2,7 @@
 *.apk
 *.aar
 *.aab
+*.idsig
 
 # Files for the ART/Dalvik VM
 *.dex
