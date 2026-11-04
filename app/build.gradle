@@ -21,10 +21,42 @@ android {
         }
     }
 
+    signingConfigs {
+        release {
+            def keystorePropertiesFile = rootProject.file("keystore.properties")
+            def props = new Properties()
+            if (keystorePropertiesFile.exists()) {
+                keystorePropertiesFile.withInputStream { props.load(it) }
+            }
+
+            def ksFile = System.getenv("KEYSTORE_FILE") ?: props.getProperty("storeFile") ?: "release.jks"
+            def ksPass = System.getenv("KEYSTORE_PASSWORD") ?: props.getProperty("storePassword")
+            def kAlias = System.getenv("KEY_ALIAS") ?: props.getProperty("keyAlias")
+            def kPass = System.getenv("KEY_PASSWORD") ?: props.getProperty("keyPassword")
+
+            def resolvedFile = rootProject.file(ksFile)
+            if (!resolvedFile.exists()) {
+                resolvedFile = file(ksFile)
+            }
+
+            if (ksPass && kAlias && kPass && resolvedFile.exists()) {
+                storeFile resolvedFile
+                storePassword ksPass
+                keyAlias kAlias
+                keyPassword kPass
+            }
+        }
+    }
+
     buildTypes {
         release {
             minifyEnabled false
-            signingConfig signingConfigs.debug
+            def releaseSigning = signingConfigs.getByName("release")
+            if (releaseSigning.storeFile != null && releaseSigning.storeFile.exists()) {
+                signingConfig releaseSigning
+            } else {
+                signingConfig signingConfigs.debug
+            }
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
