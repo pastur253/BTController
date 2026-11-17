@@ -97,6 +97,7 @@ fun MainScreen(
     val pairedDevices by viewModel.pairedDevices.collectAsState()
     val discoveredDevices by viewModel.discoveredDevices.collectAsState()
     val updateState by viewModel.updateState.collectAsState()
+    val isAutoCheckEnabled by viewModel.isAutoCheckEnabled.collectAsState()
 
     var showAboutDialog by remember { mutableStateOf(false) }
 
@@ -365,6 +366,8 @@ fun MainScreen(
             item {
                 AppVersionCard(
                     versionName = viewModel.currentVersionName,
+                    autoCheckEnabled = isAutoCheckEnabled,
+                    onToggleAutoCheck = { viewModel.setAutoCheckEnabled(it) },
                     onOpenAbout = { showAboutDialog = true }
                 )
             }
@@ -377,6 +380,8 @@ fun MainScreen(
         versionName = viewModel.currentVersionName,
         developerName = "PasturTheFox",
         githubUrl = "https://github.com/pastur253/BTController",
+        autoCheckEnabled = isAutoCheckEnabled,
+        onToggleAutoCheck = { viewModel.setAutoCheckEnabled(it) },
         updateState = updateState,
         onCheckUpdates = { viewModel.checkForUpdates(isManual = true) },
         onDismiss = { showAboutDialog = false }
@@ -414,56 +419,98 @@ fun MainScreen(
 @Composable
 fun AppVersionCard(
     versionName: String,
+    autoCheckEnabled: Boolean,
+    onToggleAutoCheck: (Boolean) -> Unit,
     onOpenAbout: () -> Unit
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 8.dp, bottom = 16.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .clickable { onOpenAbout() },
+            .padding(top = 8.dp, bottom = 16.dp),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
         )
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+                .padding(horizontal = 16.dp, vertical = 14.dp)
         ) {
-            Column {
-                Text(
-                    text = "BT Controller v$versionName",
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = "GitHub: pastur253/BTController",
-                    fontSize = 11.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            OutlinedButton(
-                onClick = onOpenAbout,
-                shape = RoundedCornerShape(10.dp),
-                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_info),
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp),
-                    tint = PrimaryBlue
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(
-                    text = "О приложении",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = PrimaryBlue
+                Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
+                    Text(
+                        text = "BT Controller v$versionName",
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "GitHub: pastur253/BTController",
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                OutlinedButton(
+                    onClick = onOpenAbout,
+                    shape = RoundedCornerShape(10.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_info),
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = PrimaryBlue
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "О приложении",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = PrimaryBlue
+                    )
+                }
+            }
+
+            HorizontalDivider(
+                modifier = Modifier.padding(vertical = 12.dp),
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                thickness = 1.dp
+            )
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable { onToggleAutoCheck(!autoCheckEnabled) }
+                    .padding(vertical = 2.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
+                    Text(
+                        text = "Проверять обновления при запуске",
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Автоматический поиск новых версий при открытии",
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Switch(
+                    checked = autoCheckEnabled,
+                    onCheckedChange = onToggleAutoCheck,
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                        checkedTrackColor = PrimaryBlue
+                    )
                 )
             }
         }

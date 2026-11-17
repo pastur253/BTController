@@ -44,6 +44,9 @@ fun UpdateDialog(
     onRetry: () -> Unit
 ) {
     if (state is UpdateState.Idle) return
+    if (state is UpdateState.Checking && !state.isManualCheck) return
+    if (state is UpdateState.NotAvailable && !state.isManualCheck) return
+    if (state is UpdateState.Error && !state.isManualCheck) return
 
     val context = LocalContext.current
 

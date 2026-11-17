@@ -25,13 +25,23 @@ class UpdateManager(private val context: Context) {
     private val _updateState = MutableStateFlow<UpdateState>(UpdateState.Idle)
     val updateState: StateFlow<UpdateState> = _updateState.asStateFlow()
 
+    private val _autoCheckEnabled = MutableStateFlow(preferences.autoCheckEnabled)
+    val autoCheckEnabled: StateFlow<Boolean> = _autoCheckEnabled.asStateFlow()
+
+    fun setAutoCheckEnabled(enabled: Boolean) {
+        preferences.autoCheckEnabled = enabled
+        _autoCheckEnabled.value = enabled
+    }
+
     fun checkForUpdates(isManual: Boolean = false) {
         if (!isManual && !preferences.autoCheckEnabled) {
             return
         }
 
         scope.launch {
-            _updateState.value = UpdateState.Checking(isManualCheck = isManual)
+            if (isManual) {
+                _updateState.value = UpdateState.Checking(isManualCheck = true)
+            }
 
             when (val result = checker.checkForUpdate(forceCheck = isManual)) {
                 is UpdateChecker.CheckResult.NewVersionAvailable -> {
@@ -41,10 +51,14 @@ class UpdateManager(private val context: Context) {
                     )
                 }
                 is UpdateChecker.CheckResult.UpToDate -> {
-                    _updateState.value = UpdateState.NotAvailable(
-                        currentVersion = result.currentVersion,
-                        isManualCheck = isManual
-                    )
+                    if (isManual) {
+                        _updateState.value = UpdateState.NotAvailable(
+                            currentVersion = result.currentVersion,
+                            isManualCheck = true
+                        )
+                    } else {
+                        _updateState.value = UpdateState.Idle
+                    }
                 }
                 is UpdateChecker.CheckResult.Ignored -> {
                     _updateState.value = UpdateState.Idle

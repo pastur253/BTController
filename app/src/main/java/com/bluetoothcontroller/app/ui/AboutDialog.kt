@@ -32,6 +32,8 @@ fun AboutDialog(
     versionName: String,
     developerName: String = "PasturTheFox",
     githubUrl: String = "https://github.com/pastur253/BTController",
+    autoCheckEnabled: Boolean = true,
+    onToggleAutoCheck: (Boolean) -> Unit = {},
     updateState: UpdateState,
     onCheckUpdates: () -> Unit,
     onDismiss: () -> Unit
@@ -167,6 +169,49 @@ fun AboutDialog(
                                 modifier = Modifier.size(18.dp)
                             )
                         }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Auto-update setting card
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(16.dp))
+                            .clickable { onToggleAutoCheck(!autoCheckEnabled) }
+                            .padding(horizontal = 16.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
+                            Text(
+                                text = "Проверять при запуске",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = "Искать обновления при открытии приложения",
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Switch(
+                            checked = autoCheckEnabled,
+                            onCheckedChange = onToggleAutoCheck,
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                                checkedTrackColor = PrimaryBlue
+                            )
+                        )
                     }
                 }
 

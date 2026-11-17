@@ -34,6 +34,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     // Auto-update states and operations
     val updateState: StateFlow<UpdateState> = updateManager.updateState
     val currentVersionName: String = updateManager.checker.getCurrentVersionName()
+    val isAutoCheckEnabled: StateFlow<Boolean> = updateManager.autoCheckEnabled
 
     fun updatePermissionsState() {
         val granted = btController.hasPermissions()
@@ -102,6 +103,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     // Auto-update methods
+    fun setAutoCheckEnabled(enabled: Boolean) {
+        updateManager.setAutoCheckEnabled(enabled)
+    }
+
     fun checkForUpdates(isManual: Boolean = false) {
         updateManager.checkForUpdates(isManual = isManual)
     }
