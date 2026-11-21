@@ -5,7 +5,8 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
-    <Platforms>x64;x86;ARM64</Platforms>
+    <Platforms>x64</Platforms>
+    <Platform>x64</Platform>
   </PropertyGroup>
 
   <ItemGroup>
