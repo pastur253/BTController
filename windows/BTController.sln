@@ -8,6 +8,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BTController.Widgets", "BTC
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BTController.App", "BTController.App\BTController.App.csproj", "{33333333-3333-3333-3333-333333333333}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BTController.Installer", "BTController.Installer\BTController.Installer.csproj", "{55555555-5555-5555-5555-555555555555}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -24,10 +26,12 @@ Global
 		{22222222-2222-2222-2222-222222222222}.Release|x64.Build.0 = Release|x64
 		{33333333-3333-3333-3333-333333333333}.Debug|x64.ActiveCfg = Debug|x64
 		{33333333-3333-3333-3333-333333333333}.Debug|x64.Build.0 = Debug|x64
-		{33333333-3333-3333-3333-333333333333}.Debug|x64.Deploy.0 = Debug|x64
 		{33333333-3333-3333-3333-333333333333}.Release|x64.ActiveCfg = Release|x64
 		{33333333-3333-3333-3333-333333333333}.Release|x64.Build.0 = Release|x64
-		{33333333-3333-3333-3333-333333333333}.Release|x64.Deploy.0 = Release|x64
+		{55555555-5555-5555-5555-555555555555}.Debug|x64.ActiveCfg = Debug|x64
+		{55555555-5555-5555-5555-555555555555}.Debug|x64.Build.0 = Debug|x64
+		{55555555-5555-5555-5555-555555555555}.Release|x64.ActiveCfg = Release|x64
+		{55555555-5555-5555-5555-555555555555}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -61,6 +61,8 @@ Thumbs.db
 build.log
 AppPackages/
 BundleArtifacts/
+windows/artifacts/
+*.zip
 
 Thumbs.db
 Desktop.ini
