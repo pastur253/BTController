@@ -122,6 +122,7 @@ public partial class MainWindow : Window
         }
 
         UpdateStatus("Регистрация программы в системе...");
+        RegisterSparsePackage(targetDir);
         RegisterProtocol(appExe);
         RegisterUninstaller(targetDir, appExe);
     }
@@ -156,6 +157,27 @@ public partial class MainWindow : Window
         }
     }
 
+    private static void RegisterSparsePackage(string targetDir)
+    {
+        try
+        {
+            string manifestPath = Path.Combine(targetDir, "Package.appxmanifest");
+            if (File.Exists(manifestPath))
+            {
+                var psi = new ProcessStartInfo
+                {
+                    FileName = "powershell",
+                    Arguments = $"-Command \"Add-AppxPackage -Register '{manifestPath}'\"",
+                    CreateNoWindow = true,
+                    UseShellExecute = false
+                };
+                using var proc = Process.Start(psi);
+                proc?.WaitForExit();
+            }
+        }
+        catch { }
+    }
+
     private static void RegisterProtocol(string appExePath)
     {
         try
@@ -178,6 +200,7 @@ public partial class MainWindow : Window
             File.WriteAllText(uninstallScriptPath,
                 $"@echo off\r\n" +
                 $"taskkill /F /IM BTController.App.exe 2>nul\r\n" +
+                $"powershell -Command \"Get-AppxPackage *BTController* | Remove-AppxPackage\" 2>nul\r\n" +
                 $"timeout /t 1 /nobreak >nul\r\n" +
                 $"reg delete \"HKCU\\Software\\Classes\\btcontroller\" /f 2>nul\r\n" +
                 $"reg delete \"HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\BTController\" /f 2>nul\r\n" +
