@@ -49,4 +49,18 @@ captures/
 # OS-specific files
 .DS_Store
 Thumbs.db
+
+# .NET and Visual Studio
+.vs/
+*.user
+*.suo
+[Bb]in/
+[Oo]bj/
+.dotnet_cache/
+.appdata/
+build.log
+AppPackages/
+BundleArtifacts/
+
+Thumbs.db
 Desktop.ini

@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Package
+  xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:uap3="http://schemas.microsoft.com/appx/manifest/uap/windows10/3"
+  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+  xmlns:com="http://schemas.microsoft.com/appx/manifest/com/windows10"
+  IgnorableNamespaces="uap uap3 rescap com">
+
+  <Identity
+    Name="BTController.Windows"
+    Publisher="CN=BTController"
+    Version="1.0.0.0"
+    ProcessorArchitecture="x64" />
+
+  <Properties>
+    <DisplayName>Bluetooth Controller</DisplayName>
+    <PublisherDisplayName>BTController</PublisherDisplayName>
+    <Logo>Assets\StoreLogo.png</Logo>
+  </Properties>
+
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.19041.0" MaxVersionTested="10.0.26100.0" />
+  </Dependencies>
+
+  <Capabilities>
+    <rescap:Capability Name="runFullTrust" />
+    <DeviceCapability Name="bluetooth" />
+    <DeviceCapability Name="radios" />
+  </Capabilities>
+
+  <Applications>
+    <Application Id="BTControllerApp"
+      Executable="BTController.App\BTController.App.exe"
+      EntryPoint="Windows.FullTrustApplication">
+      <uap:VisualElements
+        DisplayName="Bluetooth Controller"
+        Description="Управление Bluetooth устройствами и виджет для Windows 11"
+        BackgroundColor="transparent"
+        Square150x150Logo="Assets\Square150x150Logo.png"
+        Square44x44Logo="Assets\Square44x44Logo.png">
+        <uap:DefaultTile ShortName="BT Controller">
+          <uap:ShowNameOnTiles>
+            <uap:ShowOn Tile="square150x150Logo"/>
+          </uap:ShowNameOnTiles>
+        </uap:DefaultTile>
+      </uap:VisualElements>
+
+      <Extensions>
+        <!-- Protocol activation btcontroller:// -->
+        <uap:Extension Category="windows.protocol">
+          <uap:Protocol Name="btcontroller">
+            <uap:DisplayName>Bluetooth Controller Protocol</uap:DisplayName>
+          </uap:Protocol>
+        </uap:Extension>
+
+        <!-- COM Server registration for Windows Widgets Board -->
+        <com:Extension Category="windows.comServer">
+          <com:ComServer>
+            <com:ExeServer Executable="BTController.App\BTController.App.exe" DisplayName="BT Controller Widget Provider">
+              <com:Class Id="B7E209E3-4028-4822-8356-9A0191B95B11" DisplayName="Bluetooth Widget Provider Class" />
+            </com:ExeServer>
+          </com:ComServer>
+        </com:Extension>
+
+        <!-- Windows 11 Widgets Board Provider Extension (Win + W) -->
+        <uap3:Extension Category="windows.appExtension">
+          <uap3:AppExtension Name="com.microsoft.windows.widgets.provider"
+                             Id="BTControllerWidgetProvider"
+                             DisplayName="Bluetooth Controller">
+            <uap3:Properties>
+              <WidgetProvider>
+                <ProviderIcons>
+                  <Icon Path="Assets\WidgetIcon.png" />
+                </ProviderIcons>
+                <Activation>
+                  <CreateInstance ClassId="B7E209E3-4028-4822-8356-9A0191B95B11" />
+                </Activation>
+                <Definitions>
+                  <Definition Id="BTController_Widget"
+                              DisplayName="Bluetooth Controller"
+                              Description="Быстрое подключение и мониторинг Bluetooth-устройств"
+                              DefaultSize="medium">
+                    <Capabilities>
+                      <Capability Size="medium" />
+                      <Capability Size="large" />
+                    </Capabilities>
+                    <ThemeResources>
+                      <Icons>
+                        <Icon Path="Assets\WidgetIcon.png" />
+                      </Icons>
+                      <Screenshots>
+                        <Screenshot Path="Assets\WidgetScreenshot.png" />
+                      </Screenshots>
+                    </ThemeResources>
+                  </Definition>
+                </Definitions>
+              </WidgetProvider>
+            </uap3:Properties>
+          </uap3:AppExtension>
+        </uap3:Extension>
+      </Extensions>
+    </Application>
+  </Applications>
+</Package>

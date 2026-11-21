@@ -1,0 +1,149 @@
+{
+  "type": "AdaptiveCard",
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "version": "1.5",
+  "body": [
+    {
+      "type": "ColumnSet",
+      "spacing": "None",
+      "columns": [
+        {
+          "type": "Column",
+          "width": "stretch",
+          "verticalContentAlignment": "Center",
+          "items": [
+            {
+              "type": "TextBlock",
+              "text": "Bluetooth Controller",
+              "weight": "Bolder",
+              "size": "Medium",
+              "wrap": true
+            }
+          ]
+        },
+        {
+          "type": "Column",
+          "width": "auto",
+          "items": [
+            {
+              "type": "ActionSet",
+              "actions": [
+                {
+                  "type": "Action.Execute",
+                  "title": "↻",
+                  "verb": "refresh",
+                  "tooltip": "Обновить список"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "Container",
+      "$when": "${count(devices) == 0}",
+      "spacing": "Medium",
+      "items": [
+        {
+          "type": "TextBlock",
+          "text": "Нет добавленных устройств в виджет.",
+          "isSubtle": true,
+          "wrap": true,
+          "horizontalAlignment": "Center"
+        },
+        {
+          "type": "ActionSet",
+          "horizontalAlignment": "Center",
+          "actions": [
+            {
+              "type": "Action.Execute",
+              "title": "Открыть настройки",
+              "verb": "openSettings"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "Container",
+      "$when": "${count(devices) > 0}",
+      "spacing": "Small",
+      "items": [
+        {
+          "type": "Container",
+          "$data": "${devices}",
+          "spacing": "Small",
+          "separator": true,
+          "items": [
+            {
+              "type": "ColumnSet",
+              "verticalContentAlignment": "Center",
+              "columns": [
+                {
+                  "type": "Column",
+                  "width": "auto",
+                  "items": [
+                    {
+                      "type": "TextBlock",
+                      "text": "${icon}",
+                      "size": "Medium",
+                      "weight": "Bolder"
+                    }
+                  ]
+                },
+                {
+                  "type": "Column",
+                  "width": "stretch",
+                  "items": [
+                    {
+                      "type": "TextBlock",
+                      "text": "${name}",
+                      "weight": "Bolder",
+                      "maxLines": 1
+                    },
+                    {
+                      "type": "TextBlock",
+                      "text": "${statusText}",
+                      "size": "Small",
+                      "isSubtle": true,
+                      "color": "${statusColor}",
+                      "spacing": "None"
+                    }
+                  ]
+                },
+                {
+                  "type": "Column",
+                  "width": "auto",
+                  "items": [
+                    {
+                      "type": "ActionSet",
+                      "actions": [
+                        {
+                          "type": "Action.Execute",
+                          "title": "${actionTitle}",
+                          "verb": "toggleConnection",
+                          "data": {
+                            "deviceId": "${id}",
+                            "isConnected": "${isConnected}"
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "actions": [
+    {
+      "type": "Action.Execute",
+      "title": "Управление устройствами",
+      "verb": "openApp"
+    }
+  ]
+}

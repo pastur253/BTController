@@ -1,0 +1,89 @@
+<Page
+    x:Class="BTController.App.Views.SettingsPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <ScrollViewer>
+        <StackPanel Spacing="24" MaxWidth="800" HorizontalAlignment="Left">
+            <!-- Header -->
+            <StackPanel Spacing="4">
+                <TextBlock Text="Параметры" Style="{ThemeResource TitleTextBlockStyle}" />
+                <TextBlock Text="Настройки приложения и интеграции с Windows 11"
+                           Style="{ThemeResource BodySubtleTextBlockStyle}" />
+            </StackPanel>
+
+            <!-- Windows 11 Widgets Board Card -->
+            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Padding="20">
+                <StackPanel Spacing="12">
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <FontIcon Glyph="&#xE78B;" FontSize="24" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                        <StackPanel>
+                            <TextBlock Text="Виджет Windows 11 (Мини-приложения)" FontWeight="SemiBold" FontSize="16" />
+                            <TextBlock Text="Отображение в панели виджетов (сочетание клавиш Win + W)"
+                                       Style="{ThemeResource CaptionTextBlockStyle}"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        </StackPanel>
+                    </StackPanel>
+
+                    <TextBlock Text="Чтобы закрепить виджет:" FontWeight="Medium" Margin="0,8,0,0"/>
+                    <TextBlock Text="1. Откройте панель мини-приложений Windows (нажмите Win + W или кликните по иконке погоды в левом нижнем углу панели задач)." />
+                    <TextBlock Text="2. Нажмите кнопку '+' (Добавить виджеты) в правом верхнем углу панели." />
+                    <TextBlock Text="3. Найдите 'Bluetooth Controller' и нажмите 'Закрепить'." />
+                </StackPanel>
+            </Border>
+
+            <!-- Appearance Card -->
+            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Padding="20">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="Тема оформления" FontWeight="SemiBold" FontSize="16" />
+                        <TextBlock Text="Выберите оформление приложения или используйте параметры системы Windows"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    </StackPanel>
+
+                    <ComboBox Grid.Column="1" SelectedIndex="0" MinWidth="150" SelectionChanged="ThemeComboBox_SelectionChanged">
+                        <ComboBoxItem Content="Как в системе" />
+                        <ComboBoxItem Content="Светлая" />
+                        <ComboBoxItem Content="Темная" />
+                    </ComboBox>
+                </Grid>
+            </Border>
+
+            <!-- Updates Card -->
+            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Padding="20">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="Обновление приложения" FontWeight="SemiBold" FontSize="16" />
+                        <TextBlock Text="{x:Bind ViewModel.UpdateStatus, Mode=OneWay}"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        <TextBlock Text="{x:Bind ViewModel.AppVersion, Mode=OneWay}"
+                                   FontSize="12"
+                                   Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                                   Margin="0,4,0,0" />
+                    </StackPanel>
+
+                    <Button Grid.Column="1"
+                            Command="{x:Bind ViewModel.CheckUpdateCommand}"
+                            IsEnabled="{x:Bind ViewModel.CanCheckUpdate, Mode=OneWay}">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <FontIcon Glyph="&#xE895;" FontSize="14" />
+                            <TextBlock Text="Проверить" />
+                        </StackPanel>
+                    </Button>
+                </Grid>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</Page>
