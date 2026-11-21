@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-windows10.0.26100.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.19041.0</TargetPlatformMinVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <Platforms>x64</Platforms>
+    <Platform>x64</Platform>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.6.5" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2957" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="BTController.Core">
+      <HintPath>..\BTController.Core\bin\x64\Debug\net8.0-windows10.0.26100.0\BTController.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="BTController.Widgets">
+      <HintPath>..\BTController.Widgets\bin\x64\Debug\net8.0-windows10.0.26100.0\BTController.Widgets.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+</Project>

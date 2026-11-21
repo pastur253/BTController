@@ -24,6 +24,13 @@
               "isSubtle": true,
               "size": "Small",
               "spacing": "None"
+            },
+            {
+              "type": "TextBlock",
+              "text": "Обновлено: ${lastUpdated}",
+              "size": "Small",
+              "isSubtle": true,
+              "spacing": "None"
             }
           ]
         },

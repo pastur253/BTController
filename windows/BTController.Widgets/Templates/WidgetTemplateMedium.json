@@ -18,6 +18,13 @@
               "weight": "Bolder",
               "size": "Medium",
               "wrap": true
+            },
+            {
+              "type": "TextBlock",
+              "text": "Обновлено: ${lastUpdated}",
+              "size": "Small",
+              "isSubtle": true,
+              "spacing": "None"
             }
           ]
         },

@@ -11,7 +11,8 @@
             <StackPanel Spacing="4">
                 <TextBlock Text="Сопряженные устройства" Style="{ThemeResource TitleTextBlockStyle}" />
                 <TextBlock Text="Все сохраненные Bluetooth-устройства вашего компьютера"
-                           Style="{ThemeResource BodySubtleTextBlockStyle}" />
+                           Style="{ThemeResource BodyTextBlockStyle}"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
             </StackPanel>
             <Button Command="{x:Bind ViewModel.LoadDevicesCommand}" HorizontalAlignment="Right" VerticalAlignment="Center">
                 <StackPanel Orientation="Horizontal" Spacing="8">

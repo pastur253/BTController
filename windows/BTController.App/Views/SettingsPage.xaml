@@ -9,7 +9,8 @@
             <StackPanel Spacing="4">
                 <TextBlock Text="Параметры" Style="{ThemeResource TitleTextBlockStyle}" />
                 <TextBlock Text="Настройки приложения и интеграции с Windows 11"
-                           Style="{ThemeResource BodySubtleTextBlockStyle}" />
+                           Style="{ThemeResource BodyTextBlockStyle}"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
             </StackPanel>
 
             <!-- Windows 11 Widgets Board Card -->

@@ -12,7 +12,8 @@
             <StackPanel Spacing="4">
                 <TextBlock Text="Устройства в виджете" Style="{ThemeResource TitleTextBlockStyle}" />
                 <TextBlock Text="Управляйте списком устройств, отображаемых в панели мини-приложений Windows (Win + W)"
-                           Style="{ThemeResource BodySubtleTextBlockStyle}" />
+                           Style="{ThemeResource BodyTextBlockStyle}"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
             </StackPanel>
             <Button Command="{x:Bind ViewModel.LoadDevicesCommand}" HorizontalAlignment="Right" VerticalAlignment="Center">
                 <StackPanel Orientation="Horizontal" Spacing="8">

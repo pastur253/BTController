@@ -11,7 +11,8 @@
             <StackPanel Spacing="4">
                 <TextBlock Text="Поиск новых устройств" Style="{ThemeResource TitleTextBlockStyle}" />
                 <TextBlock Text="Сканирование окружающих Bluetooth-устройств в режиме обнаружения"
-                           Style="{ThemeResource BodySubtleTextBlockStyle}" />
+                           Style="{ThemeResource BodyTextBlockStyle}"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
             </StackPanel>
 
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="12" VerticalAlignment="Center">

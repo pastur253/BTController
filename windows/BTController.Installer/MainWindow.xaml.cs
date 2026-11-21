@@ -161,13 +161,22 @@ public partial class MainWindow : Window
     {
         try
         {
-            string manifestPath = Path.Combine(targetDir, "Package.appxmanifest");
+            string manifestPath = Path.Combine(targetDir, "AppxManifest.xml");
+            if (!File.Exists(manifestPath))
+            {
+                string oldManifest = Path.Combine(targetDir, "Package.appxmanifest");
+                if (File.Exists(oldManifest))
+                {
+                    File.Copy(oldManifest, manifestPath, true);
+                }
+            }
+
             if (File.Exists(manifestPath))
             {
                 var psi = new ProcessStartInfo
                 {
                     FileName = "powershell",
-                    Arguments = $"-Command \"Add-AppxPackage -Register '{manifestPath}'\"",
+                    Arguments = $"-NoProfile -Command \"Add-AppxPackage -Register '{manifestPath}' -ExternalLocation '{targetDir}'\"",
                     CreateNoWindow = true,
                     UseShellExecute = false
                 };
