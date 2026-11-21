@@ -8,8 +8,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BTController.Widgets", "BTC
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BTController.App", "BTController.App\BTController.App.csproj", "{33333333-3333-3333-3333-333333333333}"
 EndProject
-Project("{C7167F0D-BC9F-4E6E-AFE1-012C56B48DB5}") = "BTController.Package", "BTController.Package\BTController.Package.wapproj", "{4F9550F3-7B5E-4B0A-A90C-D7E691C83D42}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -26,12 +24,10 @@ Global
 		{22222222-2222-2222-2222-222222222222}.Release|x64.Build.0 = Release|x64
 		{33333333-3333-3333-3333-333333333333}.Debug|x64.ActiveCfg = Debug|x64
 		{33333333-3333-3333-3333-333333333333}.Debug|x64.Build.0 = Debug|x64
+		{33333333-3333-3333-3333-333333333333}.Debug|x64.Deploy.0 = Debug|x64
 		{33333333-3333-3333-3333-333333333333}.Release|x64.ActiveCfg = Release|x64
 		{33333333-3333-3333-3333-333333333333}.Release|x64.Build.0 = Release|x64
-		{4F9550F3-7B5E-4B0A-A90C-D7E691C83D42}.Debug|x64.ActiveCfg = Debug|x64
-		{4F9550F3-7B5E-4B0A-A90C-D7E691C83D42}.Debug|x64.Build.0 = Debug|x64
-		{4F9550F3-7B5E-4B0A-A90C-D7E691C83D42}.Release|x64.ActiveCfg = Release|x64
-		{4F9550F3-7B5E-4B0A-A90C-D7E691C83D42}.Release|x64.Build.0 = Release|x64
+		{33333333-3333-3333-3333-333333333333}.Release|x64.Deploy.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

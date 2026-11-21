@@ -23,6 +23,10 @@
     <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.19041.0" MaxVersionTested="10.0.26100.0" />
   </Dependencies>
 
+  <Resources>
+    <Resource Language="x-generate" />
+  </Resources>
+
   <Capabilities>
     <rescap:Capability Name="runFullTrust" />
     <DeviceCapability Name="bluetooth" />
@@ -30,8 +34,8 @@
   </Capabilities>
 
   <Applications>
-    <Application Id="BTControllerApp"
-      Executable="BTController.App\BTController.App.exe"
+    <Application Id="App"
+      Executable="BTController.App.exe"
       EntryPoint="Windows.FullTrustApplication">
       <uap:VisualElements
         DisplayName="Bluetooth Controller"
@@ -57,7 +61,7 @@
         <!-- COM Server registration for Windows Widgets Board -->
         <com:Extension Category="windows.comServer">
           <com:ComServer>
-            <com:ExeServer Executable="BTController.App\BTController.App.exe" DisplayName="BT Controller Widget Provider">
+            <com:ExeServer Executable="BTController.App.exe" DisplayName="BT Controller Widget Provider">
               <com:Class Id="B7E209E3-4028-4822-8356-9A0191B95B11" DisplayName="Bluetooth Widget Provider Class" />
             </com:ExeServer>
           </com:ComServer>

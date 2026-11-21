@@ -1,12 +1,12 @@
 # BT Controller для Windows 11 (WinUI 3 & Widgets Board)
 
-Нативная реализация **Bluetooth Controller** для **Windows 11** с использованием **WinUI 3 (Windows App SDK)** и интеграцией с системной панелью мини-приложений (**Windows Widgets Board**, вызываемой клавишами **Win + W**).
+Нативная реализация **Bluetooth Controller** для **Windows 11** с использованием **WinUI 3 (Windows App SDK Single-Project MSIX)** и интеграцией с системной панелью мини-приложений (**Windows Widgets Board**, вызываемой клавишами **Win + W**).
 
 ---
 
 ## 📌 Архитектура решения
 
-Решение расположено в папке `windows/` и состоит из четырех взаимосвязанных проектов:
+Решение расположено в папке `windows/` и состоит из трех основных проектов (Single-Project архитектура WinUI 3):
 
 ```
 windows/
@@ -25,12 +25,12 @@ windows/
 │   └── Templates/
 │       ├── WidgetTemplateMedium.json     # Шаблон адаптивной карточки (Medium)
 │       └── WidgetTemplateLarge.json      # Шаблон адаптивной карточки (Large с деталями)
-├── BTController.App/                     # Основное приложение WinUI 3
-│   ├── MainWindow.xaml                   # Окно с нативным эффектом Mica и TitleBar
-│   ├── ViewModels/                       # Dashboard, Paired, Discovery, Settings
-│   └── Views/                            # Страницы со списком виджета, сопряженными устройствами и сканером
-└── BTController.Package/                 # MSIX Packaging проект
-    └── Package.appxmanifest              # Декларация com.microsoft.windows.widgets.provider и COM-сервера
+└── BTController.App/                     # Основное приложение WinUI 3 (Single-Project Packaging)
+    ├── Package.appxmanifest              # Манифест MSIX с регистрацией виджета (Win + W)
+    ├── Assets/                           # Иконки, плитки и скриншоты для виджета
+    ├── MainWindow.xaml                   # Окно с нативным эффектом Mica и TitleBar
+    ├── ViewModels/                       # Dashboard, Paired, Discovery, Settings
+    └── Views/                            # Страницы со списком виджета, сопряженными устройствами и сканером
 ```
 
 ---
@@ -52,26 +52,18 @@ windows/
 
 ---
 
-## 🛠 Сборка и запуск
+## 🛠 Сборка и запуск в Visual Studio 2022
 
-### Вариант 1: Через Visual Studio
-1. Откройте `windows/BTController.sln` в **Visual Studio 2022** (с установленной рабочей нагрузкой *.NET Desktop Development* и *Windows App SDK C# Templates*).
-2. Выберите конфигурацию `Debug` и платформу `x64`.
-3. Установите `BTController.App` (или `BTController.Package`) как запускаемый проект и нажмите **F5**.
-
-### Вариант 2: Через командную строку (CLI)
-Сборка основного WinUI 3 приложения:
-```powershell
-& "MSBuild.exe" windows\BTController.App\BTController.App.csproj /p:Configuration=Debug /p:Platform=x64 /p:UseSharedCompilation=false
-```
-Собранный исполняемый файл будет доступен по пути:
-`windows\BTController.App\bin\x64\Debug\net8.0-windows10.0.26100.0\BTController.App.exe`
+1. Откройте `windows/BTController.sln` в **Visual Studio 2022**.
+2. В панели инструментов выберите платформу **`x64`** и конфигурацию **`Debug`** (или `Release`).
+3. Убедитесь, что запускаемым проектом выбран **`BTController.App`** (ПКМ по `BTController.App` -> *Назначить запускаемым проектом*).
+4. Нажмите **F5** (или зеленую стрелку «Запустить»). Приложение соберется, упакуется и запустится нативно.
 
 ---
 
 ## 📲 Как включить виджет в Windows 11
 
-1. Запустите или установите пакет приложения `BTController.Package`.
+1. Запустите приложение хотя бы один раз (при первом запуске Windows регистрирует провайдер виджета).
 2. Откройте панель мини-приложений нажатием **Win + W** (или кликом по виджету погоды на панели задач).
 3. Нажмите кнопку **`+`** («Добавить виджеты») в правом верхнем углу панели.
 4. В списке доступных виджетов найдите **Bluetooth Controller** и нажмите **Закрепить**.
