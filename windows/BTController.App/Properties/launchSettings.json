@@ -1,10 +1,10 @@
 {
   "profiles": {
-    "BTController.App (Package)": {
-      "commandName": "MsixPackage"
-    },
     "BTController.App (Unpackaged)": {
       "commandName": "Project"
+    },
+    "BTController.App (Package)": {
+      "commandName": "MsixPackage"
     }
   }
 }
