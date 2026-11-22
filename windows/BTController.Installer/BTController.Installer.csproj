@@ -13,6 +13,7 @@
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <AssemblyTitle>Bluetooth Controller Setup</AssemblyTitle>
     <ApplicationIcon>installer.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
     <AssemblyName>BTController-Setup</AssemblyName>
   </PropertyGroup>
 

@@ -161,6 +161,25 @@ public partial class MainWindow : Window
     {
         try
         {
+            // 1. Automatically enable Developer Mode in HKLM so unsigned sparse package can be registered
+            try
+            {
+                using var key = Registry.LocalMachine.CreateSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock");
+                if (key != null)
+                {
+                    object? val = key.GetValue("AllowDevelopmentWithoutDevLicense");
+                    if (val == null || (int)val != 1)
+                    {
+                        key.SetValue("AllowDevelopmentWithoutDevLicense", 1, RegistryValueKind.DWord);
+                    }
+                }
+            }
+            catch
+            {
+                // Fall back if permission denied
+            }
+
+            // 2. Prepare AppxManifest.xml
             string manifestPath = Path.Combine(targetDir, "AppxManifest.xml");
             if (!File.Exists(manifestPath))
             {
@@ -171,12 +190,13 @@ public partial class MainWindow : Window
                 }
             }
 
+            // 3. Register package with external location
             if (File.Exists(manifestPath))
             {
                 var psi = new ProcessStartInfo
                 {
                     FileName = "powershell",
-                    Arguments = $"-NoProfile -Command \"Add-AppxPackage -Register '{manifestPath}' -ExternalLocation '{targetDir}'\"",
+                    Arguments = $"-NoProfile -ExecutionPolicy Bypass -Command \"Add-AppxPackage -Register '{manifestPath}' -ExternalLocation '{targetDir}'\"",
                     CreateNoWindow = true,
                     UseShellExecute = false
                 };
