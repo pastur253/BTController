@@ -57,7 +57,7 @@ public class WindowsBluetoothService : IBluetoothService
 
         _pairedWatcher.Added += async (w, info) =>
         {
-            await ProcessOrUpdateDeviceAsync(info.Id);
+            await ProcessOrUpdateDeviceAsync(info.Id, info);
             DevicesReloaded?.Invoke(this, EventArgs.Empty);
         };
 
@@ -86,10 +86,10 @@ public class WindowsBluetoothService : IBluetoothService
         try
         {
             string selector = BluetoothDevice.GetDeviceSelectorFromPairingState(true);
-            var devices = await DeviceInformation.FindAllAsync(selector);
+            var devices = await DeviceInformation.FindAllAsync(selector, ["System.Devices.Aep.DeviceAddress", "System.Devices.Aep.IsConnected"]);
             foreach (var devInfo in devices)
             {
-                await ProcessOrUpdateDeviceAsync(devInfo.Id);
+                await ProcessOrUpdateDeviceAsync(devInfo.Id, devInfo);
             }
         }
         catch (Exception ex)
@@ -98,37 +98,96 @@ public class WindowsBluetoothService : IBluetoothService
         }
     }
 
-    private async Task<BluetoothDeviceModel?> ProcessOrUpdateDeviceAsync(string deviceId)
+    private async Task<BluetoothDeviceModel?> ProcessOrUpdateDeviceAsync(string deviceId, DeviceInformation? devInfo = null)
     {
         try
         {
             var widgetIds = await _widgetPrefs.GetWidgetDeviceIdsAsync();
 
-            if (!_activeBtDevices.TryGetValue(deviceId, out var btDevice))
+            BluetoothDevice? btDevice = null;
+            if (!_activeBtDevices.TryGetValue(deviceId, out btDevice))
             {
-                btDevice = await BluetoothDevice.FromIdAsync(deviceId);
-                if (btDevice == null) return null;
-
-                _activeBtDevices[deviceId] = btDevice;
-                btDevice.ConnectionStatusChanged += OnDeviceConnectionStatusChanged;
+                try
+                {
+                    btDevice = await BluetoothDevice.FromIdAsync(deviceId);
+                    if (btDevice != null)
+                    {
+                        _activeBtDevices[deviceId] = btDevice;
+                        btDevice.ConnectionStatusChanged += OnDeviceConnectionStatusChanged;
+                    }
+                }
+                catch
+                {
+                    // Device might be offline or Radio is turned off
+                }
             }
 
-            var model = _cachedModels.GetOrAdd(deviceId, id => new BluetoothDeviceModel
+            if (btDevice != null)
             {
-                Id = id,
-                Address = btDevice.BluetoothAddress.ToString("X12"),
-                Name = !string.IsNullOrWhiteSpace(btDevice.Name) ? btDevice.Name : "Bluetooth Device"
-            });
+                var model = _cachedModels.GetOrAdd(deviceId, id => new BluetoothDeviceModel
+                {
+                    Id = id,
+                    Address = btDevice.BluetoothAddress.ToString("X12"),
+                    Name = !string.IsNullOrWhiteSpace(btDevice.Name) ? btDevice.Name : "Bluetooth Device"
+                });
 
-            model.Name = !string.IsNullOrWhiteSpace(btDevice.Name) ? btDevice.Name : model.Name;
-            model.Address = btDevice.BluetoothAddress.ToString("X12");
-            model.IsConnected = btDevice.ConnectionStatus == BluetoothConnectionStatus.Connected;
-            model.DeviceType = MapDeviceType(btDevice.ClassOfDevice);
-            model.IsPaired = btDevice.DeviceInformation.Pairing.IsPaired;
-            model.IsInWidget = widgetIds.Contains(deviceId);
+                model.Name = !string.IsNullOrWhiteSpace(btDevice.Name) ? btDevice.Name : model.Name;
+                model.Address = btDevice.BluetoothAddress.ToString("X12");
+                model.IsConnected = btDevice.ConnectionStatus == BluetoothConnectionStatus.Connected;
+                model.DeviceType = MapDeviceType(btDevice.ClassOfDevice);
+                model.IsPaired = btDevice.DeviceInformation.Pairing.IsPaired;
+                model.IsInWidget = widgetIds.Contains(deviceId);
 
-            DeviceUpdated?.Invoke(this, model);
-            return model;
+                DeviceUpdated?.Invoke(this, model);
+                return model;
+            }
+            else
+            {
+                // Fall back to DeviceInformation if BluetoothDevice could not be opened (e.g. Radio is Off or device is unreachable)
+                if (devInfo == null)
+                {
+                    try
+                    {
+                        devInfo = await DeviceInformation.CreateFromIdAsync(deviceId, ["System.Devices.Aep.DeviceAddress", "System.Devices.Aep.IsConnected"]);
+                    }
+                    catch { }
+                }
+
+                if (devInfo != null)
+                {
+                    string name = !string.IsNullOrWhiteSpace(devInfo.Name) ? devInfo.Name : "Bluetooth Device";
+                    string addr = "";
+                    if (devInfo.Properties.TryGetValue("System.Devices.Aep.DeviceAddress", out var addrObj) && addrObj is string sAddr)
+                    {
+                        addr = sAddr.Replace(":", "");
+                    }
+
+                    bool isConn = false;
+                    if (devInfo.Properties.TryGetValue("System.Devices.Aep.IsConnected", out var connObj) && connObj is bool bConn)
+                    {
+                        isConn = bConn;
+                    }
+
+                    var model = _cachedModels.GetOrAdd(deviceId, id => new BluetoothDeviceModel
+                    {
+                        Id = id,
+                        Address = addr,
+                        Name = name
+                    });
+
+                    model.Name = name;
+                    if (!string.IsNullOrEmpty(addr)) model.Address = addr;
+                    model.IsConnected = isConn;
+                    model.IsPaired = true;
+                    model.IsInWidget = widgetIds.Contains(deviceId);
+                    model.DeviceType = GuessDeviceTypeFromName(name);
+
+                    DeviceUpdated?.Invoke(this, model);
+                    return model;
+                }
+
+                return null;
+            }
         }
         catch (Exception ex)
         {
@@ -420,5 +479,26 @@ public class WindowsBluetoothService : IBluetoothService
             BluetoothMajorClass.Wearable => DeviceType.Wearable,
             _ => DeviceType.Other
         };
+    }
+
+    private static DeviceType GuessDeviceTypeFromName(string name)
+    {
+        var lower = name.ToLowerInvariant();
+        if (lower.Contains("headphone") || lower.Contains("airpod") || lower.Contains("buds") ||
+            lower.Contains("wh-") || lower.Contains("qc35") || lower.Contains("wf-") || lower.Contains("ear") ||
+            lower.Contains("bt09"))
+            return DeviceType.Headphones;
+        if (lower.Contains("speaker") || lower.Contains("soundbar") || lower.Contains("echo") || lower.Contains("jbl"))
+            return DeviceType.Speaker;
+        if (lower.Contains("mouse") || lower.Contains("keyboard") || lower.Contains("trackpad") ||
+            lower.Contains("gamepad") || lower.Contains("controller"))
+            return DeviceType.Peripheral;
+        if (lower.Contains("phone") || lower.Contains("iphone") || lower.Contains("galaxy") || lower.Contains("pixel"))
+            return DeviceType.Phone;
+        if (lower.Contains("pc") || lower.Contains("laptop") || lower.Contains("desktop"))
+            return DeviceType.Computer;
+        if (lower.Contains("watch") || lower.Contains("band"))
+            return DeviceType.Wearable;
+        return DeviceType.Other;
     }
 }

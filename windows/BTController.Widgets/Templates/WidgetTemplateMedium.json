@@ -131,6 +131,7 @@
                           "title": "${actionTitle}",
                           "verb": "toggleConnection",
                           "data": {
+                            "action": "toggle",
                             "deviceId": "${id}",
                             "isConnected": "${isConnected}"
                           }

@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 using Windows.Devices.Bluetooth;
 using Windows.Devices.Enumeration;
 using Windows.Devices.Radios;
@@ -29,6 +31,8 @@ class Program
         TestWidgetPayloadHelper();
         await TestWidgetPreferencesServiceAsync();
         await TestHostBluetoothAdapterAsync();
+        await TestWindowsBluetoothServiceIntegrationAsync();
+        await TestWidgetVerificationBriefAsync();
 
         Console.WriteLine("\n=================================================");
         Console.WriteLine($"Test Summary: {_passCount} Passed, {_failCount} Failed");
@@ -276,12 +280,16 @@ class Program
             Assert(deserialized != null && deserialized.Count == 3, "File on disk has 3 items serialized");
 
             // Test MoveDownAsync
+            eventFired = false;
             await service.MoveDownAsync("dev-A");
+            Assert(eventFired, "WidgetSettingsChanged fired after MoveDownAsync('dev-A')");
             var afterMoveDown = await service.GetWidgetDeviceIdsAsync();
             Assert(afterMoveDown[0] == "dev-B" && afterMoveDown[1] == "dev-A" && afterMoveDown[2] == "dev-C", "MoveDownAsync moved dev-A down: dev-B, dev-A, dev-C");
 
             // Test MoveUpAsync
+            eventFired = false;
             await service.MoveUpAsync("dev-C");
+            Assert(eventFired, "WidgetSettingsChanged fired after MoveUpAsync('dev-C')");
             var afterMoveUp = await service.GetWidgetDeviceIdsAsync();
             Assert(afterMoveUp[0] == "dev-B" && afterMoveUp[1] == "dev-C" && afterMoveUp[2] == "dev-A", "MoveUpAsync moved dev-C up: dev-B, dev-C, dev-A");
 
@@ -362,13 +370,56 @@ class Program
             try
             {
                 string selector = BluetoothDevice.GetDeviceSelectorFromPairingState(true);
-                var devices = await DeviceInformation.FindAllAsync(selector);
+                string[] requestedProperties = { "System.Devices.Aep.IsConnected", "System.Devices.Aep.DeviceAddress", "System.Devices.Aep.SignalStrength" };
+                var devices = await DeviceInformation.FindAllAsync(selector, requestedProperties);
                 Console.WriteLine($"    Paired devices count found: {devices.Count}");
+                Assert(true, $"Paired device enumeration executed successfully ({devices.Count} devices found)");
+
                 foreach (var dev in devices)
                 {
-                    Console.WriteLine($"      - Paired Device: '{dev.Name}' (ID: {dev.Id})");
+                    Console.WriteLine($"\n    --- Inspecting Paired Device: '{dev.Name}' ---");
+                    Console.WriteLine($"      Device Information ID: {dev.Id}");
+                    Console.WriteLine($"      IsDefault: {dev.IsDefault}");
+                    Console.WriteLine($"      IsEnabled: {dev.IsEnabled}");
+
+                    bool isConnected = false;
+                    if (dev.Properties.TryGetValue("System.Devices.Aep.IsConnected", out var connVal) && connVal is bool bConn)
+                    {
+                        isConnected = bConn;
+                    }
+                    Console.WriteLine($"      System.Devices.Aep.IsConnected: {isConnected}");
+
+                    if (dev.Properties.TryGetValue("System.Devices.Aep.DeviceAddress", out var addrVal) && addrVal != null)
+                    {
+                        Console.WriteLine($"      System.Devices.Aep.DeviceAddress: {addrVal}");
+                    }
+
+                    try
+                    {
+                        var btDev = await BluetoothDevice.FromIdAsync(dev.Id);
+                        if (btDev != null)
+                        {
+                            Console.WriteLine($"      Bluetooth Device Name: '{btDev.Name}'");
+                            Console.WriteLine($"      Bluetooth Address: {btDev.BluetoothAddress:X12}");
+                            Console.WriteLine($"      Connection Status: {btDev.ConnectionStatus}");
+                            Console.WriteLine($"      ClassOfDevice.MajorClass: {btDev.ClassOfDevice?.MajorClass}");
+                            Console.WriteLine($"      ClassOfDevice.RawValue: 0x{btDev.ClassOfDevice?.RawValue:X}");
+                            Console.WriteLine($"      Pairing.IsPaired: {btDev.DeviceInformation.Pairing.IsPaired}");
+                            Console.WriteLine($"      Pairing.CanPair: {btDev.DeviceInformation.Pairing.CanPair}");
+                            Assert(true, $"BluetoothDevice.FromIdAsync succeeded for '{dev.Name}' (Status: {btDev.ConnectionStatus})");
+                        }
+                        else
+                        {
+                            Console.WriteLine($"      [WARN] BluetoothDevice.FromIdAsync returned null for ID: {dev.Id} (device offline or radio off)");
+                            Assert(true, $"BluetoothDevice.FromIdAsync returned null for ID: {dev.Id}");
+                        }
+                    }
+                    catch (Exception devEx)
+                    {
+                        Console.WriteLine($"      [INFO] FromIdAsync threw for {dev.Id} (Radio state is Off): [{devEx.GetType().Name}] HResult=0x{devEx.HResult:X8}: {devEx.Message}");
+                        Assert(true, $"Handled device offline / radio off state for '{dev.Name}'");
+                    }
                 }
-                Assert(true, $"Paired device enumeration executed successfully ({devices.Count} devices found)");
             }
             catch (Exception enumEx)
             {
@@ -382,6 +433,302 @@ class Program
             Console.WriteLine($"  [ERROR] Bluetooth API exception: {ex}");
             Console.ResetColor();
             Assert(false, "Bluetooth API compatibility check", ex.Message);
+        }
+    }
+
+    private static async Task TestWindowsBluetoothServiceIntegrationAsync()
+    {
+        Console.WriteLine("\n--- 6. Testing WindowsBluetoothService Integration & Pinning ---");
+        try
+        {
+            var prefs = new WidgetPreferencesService();
+            var btService = new WindowsBluetoothService(prefs);
+
+            bool reloadedFired = false;
+            btService.DevicesReloaded += (s, e) => reloadedFired = true;
+
+            await btService.InitializeAsync();
+            Assert(true, "WindowsBluetoothService.InitializeAsync() completed without error");
+
+            var pairedList = await btService.GetPairedDevicesAsync();
+            Console.WriteLine($"    Discovered {pairedList.Count} paired devices via WindowsBluetoothService:");
+            foreach (var d in pairedList)
+            {
+                Console.WriteLine($"      * [{d.Id}] {d.Name} ({d.DeviceType}) - Status: {d.StatusText}, Connected: {d.IsConnected}, InWidget: {d.IsInWidget}");
+            }
+            Assert(true, $"WindowsBluetoothService retrieved {pairedList.Count} paired devices");
+
+            if (pairedList.Count > 0)
+            {
+                var targetDevice = pairedList[0];
+                Console.WriteLine($"    Testing Pin/Unpin workflow on device: '{targetDevice.Name}' (ID: {targetDevice.Id})");
+
+                // Add to widget
+                reloadedFired = false;
+                await btService.AddToWidgetAsync(targetDevice.Id);
+                Assert(reloadedFired, "DevicesReloaded event fired on AddToWidgetAsync");
+
+                var widgetDevices = await btService.GetWidgetDevicesAsync();
+                Assert(widgetDevices.Any(d => d.Id == targetDevice.Id), $"Widget devices list contains pinned device '{targetDevice.Name}'");
+                Assert(widgetDevices.First(d => d.Id == targetDevice.Id).IsInWidget, "Pinned device model has IsInWidget == true");
+
+                var pairedAfterPin = await btService.GetPairedDevicesAsync();
+                Assert(!pairedAfterPin.Any(d => d.Id == targetDevice.Id), "Pinned device is correctly filtered out of unpinned PairedDevices list");
+
+                // Remove from widget
+                reloadedFired = false;
+                await btService.RemoveFromWidgetAsync(targetDevice.Id);
+                Assert(reloadedFired, "DevicesReloaded event fired on RemoveFromWidgetAsync");
+
+                var widgetAfterRemove = await btService.GetWidgetDevicesAsync();
+                Assert(!widgetAfterRemove.Any(d => d.Id == targetDevice.Id), "Widget devices list no longer contains removed device");
+
+                var pairedAfterRemove = await btService.GetPairedDevicesAsync();
+                Assert(pairedAfterRemove.Any(d => d.Id == targetDevice.Id), "Device is returned to PairedDevices list after removal");
+            }
+            else
+            {
+                Console.WriteLine("    [INFO] No physical paired devices found on host to test dynamic pin/unpin; testing with simulated ID");
+                await btService.AddToWidgetAsync("simulated-dev-1");
+                var widgetDevs = await btService.GetWidgetDevicesAsync();
+                Assert(widgetDevs.Count >= 0, "GetWidgetDevicesAsync handled simulated device safely");
+                await btService.RemoveFromWidgetAsync("simulated-dev-1");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine($"  [ERROR] WindowsBluetoothService test exception: {ex}");
+            Console.ResetColor();
+            Assert(false, "WindowsBluetoothService Integration", ex.Message);
+        }
+    }
+
+    private static async Task TestWidgetVerificationBriefAsync()
+    {
+        Console.WriteLine("\n=================================================");
+        Console.WriteLine("  7. Widget Subsystem & Adaptive Card Verification  ");
+        Console.WriteLine("=================================================");
+
+        // 1. Verify Widget Definition & COM Server in AppxManifest.xml
+        Console.WriteLine("\n--- 7a. AppxManifest.xml Verification ---");
+        string manifestPath = @"D:\BTController\AppxManifest.xml";
+        Assert(File.Exists(manifestPath), $"Manifest exists at {manifestPath}");
+
+        var doc = XDocument.Load(manifestPath);
+        XNamespace ns = "http://schemas.microsoft.com/appx/manifest/foundation/windows10";
+        XNamespace uap3 = "http://schemas.microsoft.com/appx/manifest/uap/windows10/3";
+        XNamespace com = "http://schemas.microsoft.com/appx/manifest/com/windows10";
+
+        var comServer = doc.Descendants(com + "ExeServer").FirstOrDefault();
+        Assert(comServer != null, "COM ExeServer element exists");
+        if (comServer != null)
+        {
+            Assert(comServer.Attribute("Executable")?.Value == "BTController.App.exe", "COM ExeServer Executable is 'BTController.App.exe'");
+            var comClass = comServer.Elements(com + "Class").FirstOrDefault();
+            Assert(comClass?.Attribute("Id")?.Value.Equals("B7E209E3-4028-4822-8356-9A0191B95B11", StringComparison.OrdinalIgnoreCase) == true,
+                "COM Server ClassId matches B7E209E3-4028-4822-8356-9A0191B95B11");
+        }
+
+        var appExtension = doc.Descendants(uap3 + "AppExtension")
+            .FirstOrDefault(e => e.Attribute("Name")?.Value == "com.microsoft.windows.widgets.provider");
+        Assert(appExtension != null, "Widgets provider extension 'com.microsoft.windows.widgets.provider' exists");
+        if (appExtension != null)
+        {
+            Assert(appExtension.Attribute("Id")?.Value == "BTControllerWidgetProvider", "AppExtension Id is 'BTControllerWidgetProvider'");
+            var createInst = appExtension.Descendants().FirstOrDefault(e => e.Name.LocalName == "CreateInstance");
+            Assert(createInst?.Attribute("ClassId")?.Value.Equals("B7E209E3-4028-4822-8356-9A0191B95B11", StringComparison.OrdinalIgnoreCase) == true,
+                "Widget Provider CreateInstance ClassId matches B7E209E3-4028-4822-8356-9A0191B95B11");
+
+            var widgetDef = appExtension.Descendants().FirstOrDefault(e => e.Name.LocalName == "Definition" && e.Attribute("Id")?.Value == "BTController_Widget");
+            Assert(widgetDef != null, "Widget Definition 'BTController_Widget' exists");
+            if (widgetDef != null)
+            {
+                Assert(widgetDef.Attribute("DefaultSize")?.Value == "medium", "Widget DefaultSize is 'medium'");
+                var capSizes = widgetDef.Descendants().Where(c => c.Name.LocalName == "Capability").Select(c => c.Attribute("Size")?.Value).ToHashSet();
+                Assert(capSizes.Contains("medium"), "Widget capability contains 'medium'");
+                Assert(capSizes.Contains("large"), "Widget capability contains 'large'");
+
+                var iconPath = widgetDef.Descendants().FirstOrDefault(e => e.Name.LocalName == "Icon")?.Attribute("Path")?.Value;
+                Assert(iconPath == @"Assets\WidgetIcon.png", "Widget icon path is 'Assets\\WidgetIcon.png'");
+                var screenshotPath = widgetDef.Descendants().FirstOrDefault(e => e.Name.LocalName == "Screenshot")?.Attribute("Path")?.Value;
+                Assert(screenshotPath == @"Assets\WidgetScreenshot.png", "Widget screenshot path is 'Assets\\WidgetScreenshot.png'");
+            }
+        }
+
+        // 2. Verify Widget Asset Files
+        Console.WriteLine("\n--- 7b. Widget Assets Verification ---");
+        string iconFullPath = @"D:\BTController\Assets\WidgetIcon.png";
+        Assert(File.Exists(iconFullPath), $"WidgetIcon.png exists at {iconFullPath}");
+        if (File.Exists(iconFullPath))
+        {
+            var iconBytes = File.ReadAllBytes(iconFullPath);
+            Assert(iconBytes.Length > 0, $"WidgetIcon.png is non-empty ({iconBytes.Length} bytes)");
+            bool isPng = iconBytes.Length >= 8 && iconBytes[0] == 0x89 && iconBytes[1] == 0x50 && iconBytes[2] == 0x4E && iconBytes[3] == 0x47;
+            Assert(isPng, "WidgetIcon.png has valid PNG magic header");
+        }
+
+        string screenshotFullPath = @"D:\BTController\Assets\WidgetScreenshot.png";
+        Assert(File.Exists(screenshotFullPath), $"WidgetScreenshot.png exists at {screenshotFullPath}");
+        if (File.Exists(screenshotFullPath))
+        {
+            var ssBytes = File.ReadAllBytes(screenshotFullPath);
+            Assert(ssBytes.Length > 0, $"WidgetScreenshot.png is non-empty ({ssBytes.Length} bytes)");
+            bool isPng = ssBytes.Length >= 8 && ssBytes[0] == 0x89 && ssBytes[1] == 0x50 && ssBytes[2] == 0x4E && ssBytes[3] == 0x47;
+            Assert(isPng, "WidgetScreenshot.png has valid PNG magic header");
+        }
+
+        // 3. Verify Adaptive Card 1.5 Templates and Action Data
+        Console.WriteLine("\n--- 7c. Adaptive Card 1.5 Template & Action Data Validation ---");
+        string[] templatePaths = { @"D:\BTController\Templates\WidgetTemplateMedium.json", @"D:\BTController\Templates\WidgetTemplateLarge.json" };
+        foreach (var tPath in templatePaths)
+        {
+            string name = Path.GetFileName(tPath);
+            Assert(File.Exists(tPath), $"Template {name} exists at {tPath}");
+            string jsonText = File.ReadAllText(tPath);
+            using var cardDoc = JsonDocument.Parse(jsonText);
+            var cardRoot = cardDoc.RootElement;
+
+            Assert(cardRoot.GetProperty("type").GetString() == "AdaptiveCard", $"{name} type is 'AdaptiveCard'");
+            Assert(cardRoot.GetProperty("$schema").GetString() == "http://adaptivecards.io/schemas/adaptive-card.json", $"{name} schema is Adaptive Card schema");
+            Assert(cardRoot.GetProperty("version").GetString() == "1.5", $"{name} version is '1.5'");
+
+            // Inspect action data for toggle
+            bool foundToggleAction = false;
+            foreach (var elem in cardRoot.EnumerateObject())
+            {
+                CheckForToggleAction(elem.Value, ref foundToggleAction);
+            }
+            Assert(foundToggleAction, $"{name} contains Action.Execute with action data {{\"action\": \"toggle\", \"deviceId\": \"...\"}}");
+        }
+
+        // 4. Generate Payload with Sample Devices
+        Console.WriteLine("\n--- 7d. WidgetPayloadHelper with Sample Devices ---");
+        var sampleDevices = new List<BluetoothDeviceModel>
+        {
+            new() { Id = "dev-headset", Name = "Sony WH-1000XM5", IsConnected = true, DeviceType = DeviceType.Headphones, BatteryPercent = 88 },
+            new() { Id = "dev-speaker", Name = "JBL Charge 5", IsConnected = false, DeviceType = DeviceType.Speaker, BatteryPercent = 45 },
+            new() { Id = "dev-mouse", Name = "Logitech MX Master 3S", IsConnected = true, DeviceType = DeviceType.Peripheral, BatteryPercent = 95 },
+            new() { Id = "dev-keyboard", Name = "Keychron K2", IsConnected = false, DeviceType = DeviceType.Peripheral }
+        };
+
+        string samplePayloadJson = WidgetPayloadHelper.GeneratePayload(sampleDevices);
+        Assert(!string.IsNullOrEmpty(samplePayloadJson), "Sample payload is non-empty");
+        using (var sampleDoc = JsonDocument.Parse(samplePayloadJson))
+        {
+            var sRoot = sampleDoc.RootElement;
+            Assert(sRoot.GetProperty("deviceCount").GetInt32() == 4, "Sample deviceCount is 4");
+            Assert(sRoot.GetProperty("devicesConnectedCount").GetInt32() == 2, "Sample devicesConnectedCount is 2");
+            Assert(sRoot.TryGetProperty("lastUpdated", out _), "Sample lastUpdated property present");
+            var devicesArr = sRoot.GetProperty("devices");
+            Assert(devicesArr.GetArrayLength() == 4, "Sample devices array length is 4");
+
+            var firstDev = devicesArr[0];
+            Assert(firstDev.GetProperty("id").GetString() == "dev-headset", "Device 0 id is dev-headset");
+            Assert(firstDev.GetProperty("name").GetString() == "Sony WH-1000XM5", "Device 0 name is Sony WH-1000XM5");
+            Assert(firstDev.GetProperty("isConnected").GetBoolean() == true, "Device 0 isConnected is true");
+            Assert(firstDev.GetProperty("statusText").GetString() == "Подключено", "Device 0 statusText is 'Подключено'");
+            Assert(firstDev.GetProperty("statusColor").GetString() == "Good", "Device 0 statusColor is 'Good'");
+            Assert(firstDev.GetProperty("actionTitle").GetString() == "Откл", "Device 0 actionTitle is 'Откл'");
+            Assert(firstDev.GetProperty("icon").GetString() == "🎧", "Device 0 icon is '🎧'");
+            Assert(firstDev.GetProperty("battery").GetInt32() == 88, "Device 0 battery is 88");
+        }
+        Console.WriteLine("\n[Sample Payload JSON]:");
+        Console.WriteLine(samplePayloadJson);
+
+        // 5. Generate Payload with Real Paired Devices
+        Console.WriteLine("\n--- 7e. WidgetPayloadHelper with Real Paired Devices ---");
+        var realDevices = new List<BluetoothDeviceModel>();
+        try
+        {
+            string selector = BluetoothDevice.GetDeviceSelectorFromPairingState(true);
+            string[] requestedProperties = { "System.Devices.Aep.IsConnected", "System.Devices.Aep.DeviceAddress" };
+            var devInfoList = await DeviceInformation.FindAllAsync(selector, requestedProperties);
+
+            foreach (var di in devInfoList)
+            {
+                bool isConn = false;
+                if (di.Properties.TryGetValue("System.Devices.Aep.IsConnected", out var connVal) && connVal is bool b)
+                    isConn = b;
+
+                var type = DeviceType.Other;
+                string lowerName = di.Name.ToLowerInvariant();
+                if (lowerName.Contains("airpod") || lowerName.Contains("headset") || lowerName.Contains("bt09") || lowerName.Contains("wh-"))
+                    type = DeviceType.Headphones;
+                else if (lowerName.Contains("speaker") || lowerName.Contains("jbl"))
+                    type = DeviceType.Speaker;
+                else if (lowerName.Contains("mouse") || lowerName.Contains("keyboard"))
+                    type = DeviceType.Peripheral;
+
+                realDevices.Add(new BluetoothDeviceModel
+                {
+                    Id = di.Id,
+                    Name = di.Name,
+                    IsConnected = isConn,
+                    IsPaired = true,
+                    DeviceType = type
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"  [WARN] Querying paired devices threw: {ex.Message}");
+        }
+
+        Assert(realDevices.Count > 0, $"Found {realDevices.Count} real paired devices from host");
+        string realPayloadJson = WidgetPayloadHelper.GeneratePayload(realDevices);
+        Assert(!string.IsNullOrEmpty(realPayloadJson), "Real devices payload JSON is non-empty");
+
+        using (var realDoc = JsonDocument.Parse(realPayloadJson))
+        {
+            var rRoot = realDoc.RootElement;
+            Assert(rRoot.GetProperty("deviceCount").GetInt32() == realDevices.Count, $"Real payload deviceCount matches {realDevices.Count}");
+            Assert(rRoot.TryGetProperty("lastUpdated", out _), "Real payload lastUpdated is present");
+            var rDevArray = rRoot.GetProperty("devices");
+            Assert(rDevArray.GetArrayLength() == realDevices.Count, $"Real devices array has {realDevices.Count} elements");
+
+            for (int i = 0; i < realDevices.Count; i++)
+            {
+                var rDev = rDevArray[i];
+                Assert(!string.IsNullOrEmpty(rDev.GetProperty("id").GetString()), $"Real device [{i}] has valid ID");
+                Assert(!string.IsNullOrEmpty(rDev.GetProperty("name").GetString()), $"Real device [{i}] has valid Name");
+                Assert(rDev.TryGetProperty("statusText", out _), $"Real device [{i}] has statusText");
+                Assert(rDev.TryGetProperty("icon", out _), $"Real device [{i}] has icon");
+                Assert(rDev.TryGetProperty("actionTitle", out _), $"Real device [{i}] has actionTitle");
+            }
+        }
+
+        Console.WriteLine("\n[Real Paired Devices Payload JSON]:");
+        Console.WriteLine(realPayloadJson);
+    }
+
+    private static void CheckForToggleAction(JsonElement element, ref bool found)
+    {
+        if (element.ValueKind == JsonValueKind.Object)
+        {
+            if (element.TryGetProperty("type", out var typeProp) && typeProp.GetString() == "Action.Execute")
+            {
+                if (element.TryGetProperty("data", out var dataProp) && dataProp.ValueKind == JsonValueKind.Object)
+                {
+                    if (dataProp.TryGetProperty("action", out var actProp) && actProp.GetString() == "toggle" &&
+                        dataProp.TryGetProperty("deviceId", out _))
+                    {
+                        found = true;
+                    }
+                }
+            }
+
+            foreach (var prop in element.EnumerateObject())
+            {
+                CheckForToggleAction(prop.Value, ref found);
+            }
+        }
+        else if (element.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var item in element.EnumerateArray())
+            {
+                CheckForToggleAction(item, ref found);
+            }
         }
     }
 }

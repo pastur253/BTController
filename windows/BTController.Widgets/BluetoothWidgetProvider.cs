@@ -97,8 +97,23 @@ public class BluetoothWidgetProvider : IWidgetProvider, IWidgetProvider2
         {
             EnsureServicesInitialized();
 
-            switch (verb)
+            string effectiveVerb = verb;
+            if (string.IsNullOrEmpty(effectiveVerb) && !string.IsNullOrWhiteSpace(data))
             {
+                try
+                {
+                    using var doc = JsonDocument.Parse(data);
+                    if (doc.RootElement.TryGetProperty("action", out var actProp))
+                    {
+                        effectiveVerb = actProp.GetString() ?? string.Empty;
+                    }
+                }
+                catch { }
+            }
+
+            switch (effectiveVerb)
+            {
+                case "toggle":
                 case "toggleConnection":
                     if (!string.IsNullOrWhiteSpace(data))
                     {
