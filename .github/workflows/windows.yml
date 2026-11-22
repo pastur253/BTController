@@ -1,0 +1,67 @@
+name: Windows CI / Release Build
+
+on:
+  push:
+    branches: [ "main", "winui_widgets_planner" ]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build Windows 11 Installer
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore NuGet Packages
+        run: |
+          dotnet restore windows/BTController.sln -p:Platform=x64
+
+      - name: Publish WinUI 3 App Payload
+        shell: pwsh
+        run: |
+          dotnet publish windows/BTController.App/BTController.App.csproj -c Release -r win-x64 --self-contained true -p:Platform=x64 -o windows/artifacts/app
+          if (Test-Path "windows/artifacts/app/Package.appxmanifest") {
+            Copy-Item "windows/artifacts/app/Package.appxmanifest" "windows/artifacts/app/AppxManifest.xml" -Force
+          }
+
+      - name: Compress App Payload to ZIP
+        shell: pwsh
+        run: |
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          [System.IO.Compression.ZipFile]::CreateFromDirectory("$pwd/windows/artifacts/app", "$pwd/windows/artifacts/app.zip")
+
+      - name: Publish Windows Installer Executable
+        shell: pwsh
+        run: |
+          dotnet publish windows/BTController.Installer/BTController.Installer.csproj -c Release -r win-x64 --self-contained true -p:Platform=x64 -o windows/artifacts/installer
+
+      - name: Upload Installer Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: BTController-Setup
+          path: windows/artifacts/installer/BTController-Setup.exe
+          if-no-files-found: error
+
+      - name: Attach Installer to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            windows/artifacts/installer/BTController-Setup.exe
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
