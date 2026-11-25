@@ -18,7 +18,6 @@
     <DisplayName>Bluetooth Controller</DisplayName>
     <PublisherDisplayName>BTController</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
-    <uap10:AllowExternalContent>true</uap10:AllowExternalContent>
   </Properties>
 
   <Dependencies>
