@@ -3,52 +3,14 @@ using System.IO;
 using System.Threading.Tasks;
 using BTController.Core.Services;
 using Microsoft.UI.Xaml;
+using Microsoft.Windows.AppLifecycle;
+using Windows.ApplicationModel.Activation;
 
 namespace BTController.App;
 
-public partial class App : Application
+public static class CrashLogger
 {
-    public static Window? MainWindow { get; private set; }
-    public static WidgetPreferencesService WidgetPreferences { get; } = new();
-    public static IBluetoothService BluetoothService { get; } = new WindowsBluetoothService(WidgetPreferences);
-
-    public App()
-    {
-        AppDomain.CurrentDomain.UnhandledException += (s, e) =>
-        {
-            LogCrash("AppDomain.UnhandledException", e.ExceptionObject as Exception);
-        };
-
-        TaskScheduler.UnobservedTaskException += (s, e) =>
-        {
-            LogCrash("TaskScheduler.UnobservedTaskException", e.Exception);
-        };
-
-        UnhandledException += (s, e) =>
-        {
-            LogCrash("Application.UnhandledException", e.Exception);
-        };
-
-        this.InitializeComponent();
-    }
-
-    protected override void OnLaunched(LaunchActivatedEventArgs args)
-    {
-        try
-        {
-            _ = BluetoothService.InitializeAsync();
-
-            MainWindow = new MainWindow();
-            MainWindow.Activate();
-        }
-        catch (Exception ex)
-        {
-            LogCrash("App.OnLaunched", ex);
-            throw;
-        }
-    }
-
-    public static void LogCrash(string source, Exception? ex)
+    public static void Log(string source, Exception? ex)
     {
         try
         {
@@ -71,4 +33,75 @@ public partial class App : Application
             // Logging failure should never crash the process
         }
     }
+}
+
+public partial class App : Application
+{
+    private static readonly Lazy<WidgetPreferencesService> LazyWidgetPreferences = new(() => new WidgetPreferencesService());
+    private static readonly Lazy<IBluetoothService> LazyBluetoothService = new(() => new WindowsBluetoothService(WidgetPreferences));
+
+    public static MainWindow? MainWindow { get; private set; }
+    public static WidgetPreferencesService WidgetPreferences => LazyWidgetPreferences.Value;
+    public static IBluetoothService BluetoothService => LazyBluetoothService.Value;
+
+    public App()
+    {
+        AppDomain.CurrentDomain.UnhandledException += (s, e) =>
+        {
+            LogCrash("AppDomain.UnhandledException", e.ExceptionObject as Exception);
+        };
+
+        TaskScheduler.UnobservedTaskException += (s, e) =>
+        {
+            LogCrash("TaskScheduler.UnobservedTaskException", e.Exception);
+        };
+
+        UnhandledException += (s, e) =>
+        {
+            LogCrash("Application.UnhandledException", e.Exception);
+        };
+
+        this.InitializeComponent();
+    }
+
+    protected override void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs args)
+    {
+        try
+        {
+            _ = BluetoothService.InitializeAsync();
+
+            MainWindow = new MainWindow();
+            ApplyActivationRoute(AppInstance.GetCurrent().GetActivatedEventArgs());
+            MainWindow.Activate();
+        }
+        catch (Exception ex)
+        {
+            LogCrash("App.OnLaunched", ex);
+            throw;
+        }
+    }
+
+    public void HandleRedirectedActivation(AppActivationArguments activationArgs)
+    {
+        if (MainWindow == null) return;
+
+        MainWindow.DispatcherQueue.TryEnqueue(() =>
+        {
+            ApplyActivationRoute(activationArgs);
+            MainWindow.Activate();
+        });
+    }
+
+    private static void ApplyActivationRoute(AppActivationArguments? activationArgs)
+    {
+        if (MainWindow == null || activationArgs == null) return;
+
+        if (activationArgs.Kind == ExtendedActivationKind.Protocol &&
+            activationArgs.Data is IProtocolActivatedEventArgs protocolArgs)
+        {
+            MainWindow.NavigateToRoute(protocolArgs.Uri?.Host);
+        }
+    }
+
+    public static void LogCrash(string source, Exception? ex) => CrashLogger.Log(source, ex);
 }

@@ -52,12 +52,17 @@ windows/
 
 ---
 
-## 🛠 Сборка и запуск в Visual Studio 2022
+## 🛠 Сборка и запуск в Visual Studio 2022 / CLI
 
-1. Откройте `windows/BTController.sln` в **Visual Studio 2022**.
+1. Откройте `windows/BTController.sln` в **Visual Studio 2022** (или используйте `msbuild` / `dotnet build`).
 2. В панели инструментов выберите платформу **`x64`** и конфигурацию **`Debug`** (или `Release`).
 3. Убедитесь, что запускаемым проектом выбран **`BTController.App`** (ПКМ по `BTController.App` -> *Назначить запускаемым проектом*).
-4. Нажмите **F5** (или зеленую стрелку «Запустить»). Приложение соберется, упакуется и запустится нативно.
+4. Нажмите **F5** (или зеленую стрелку «Запустить»). Приложение соберётся в **Single-Project MSIX** и зарегистрирует провайдер виджетов.
+5. Для сборки `.msix` из командной строки:
+   ```powershell
+   dotnet build windows/BTController.App/BTController.App.csproj -c Release -p:Platform=x64 -p:GenerateAppxPackageOnBuild=true
+   ```
+   > **Примечание:** Для подписи `.msix` в CI используются секреты `WINDOWS_PFX_BASE64` и `WINDOWS_PFX_PASSWORD` (Subject сертификата должен совпадать с `Publisher` в `Package.appxmanifest`). Старые unpackaged-установщики (`BTController.Installer` и `installer.iss`) несовместимы с Win+W без Package Identity и оставлены как legacy.
 
 ---
 

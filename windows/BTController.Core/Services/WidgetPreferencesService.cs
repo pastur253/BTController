@@ -13,6 +13,7 @@ public class WidgetPreferencesService
     private readonly SemaphoreSlim _fileLock = new(1, 1);
     private List<string> _cachedDeviceIds = new();
     private bool _isLoaded;
+    private DateTime _lastWriteTimeUtc = DateTime.MinValue;
 
     public event EventHandler? WidgetSettingsChanged;
 
@@ -21,20 +22,7 @@ public class WidgetPreferencesService
         await _fileLock.WaitAsync();
         try
         {
-            if (_isLoaded) return [.. _cachedDeviceIds];
-
-            if (File.Exists(SettingsFile))
-            {
-                var json = await File.ReadAllTextAsync(SettingsFile);
-                var list = JsonSerializer.Deserialize<List<string>>(json);
-                _cachedDeviceIds = list ?? new List<string>();
-            }
-            else
-            {
-                _cachedDeviceIds = new List<string>();
-            }
-
-            _isLoaded = true;
+            await ReloadIfChangedInternalAsync();
             return [.. _cachedDeviceIds];
         }
         catch
@@ -54,6 +42,7 @@ public class WidgetPreferencesService
         await _fileLock.WaitAsync();
         try
         {
+            await ReloadIfChangedInternalAsync();
             if (!_cachedDeviceIds.Contains(deviceId))
             {
                 _cachedDeviceIds.Add(deviceId);
@@ -74,6 +63,7 @@ public class WidgetPreferencesService
         await _fileLock.WaitAsync();
         try
         {
+            await ReloadIfChangedInternalAsync();
             if (_cachedDeviceIds.Remove(deviceId))
             {
                 await SaveToFileInternalAsync();
@@ -91,6 +81,7 @@ public class WidgetPreferencesService
         await _fileLock.WaitAsync();
         try
         {
+            await ReloadIfChangedInternalAsync();
             int index = _cachedDeviceIds.IndexOf(deviceId);
             if (index > 0)
             {
@@ -111,6 +102,7 @@ public class WidgetPreferencesService
         await _fileLock.WaitAsync();
         try
         {
+            await ReloadIfChangedInternalAsync();
             int index = _cachedDeviceIds.IndexOf(deviceId);
             if (index >= 0 && index < _cachedDeviceIds.Count - 1)
             {
@@ -126,10 +118,34 @@ public class WidgetPreferencesService
         }
     }
 
+    private async Task ReloadIfChangedInternalAsync()
+    {
+        if (File.Exists(SettingsFile))
+        {
+            DateTime writeTime = File.GetLastWriteTimeUtc(SettingsFile);
+            if (!_isLoaded || writeTime != _lastWriteTimeUtc)
+            {
+                var json = await File.ReadAllTextAsync(SettingsFile);
+                var list = JsonSerializer.Deserialize<List<string>>(json);
+                _cachedDeviceIds = list ?? new List<string>();
+                _lastWriteTimeUtc = writeTime;
+                _isLoaded = true;
+            }
+        }
+        else if (!_isLoaded || _cachedDeviceIds.Count > 0)
+        {
+            _cachedDeviceIds = new List<string>();
+            _lastWriteTimeUtc = DateTime.MinValue;
+            _isLoaded = true;
+        }
+    }
+
     private async Task SaveToFileInternalAsync()
     {
         Directory.CreateDirectory(SettingsFolder);
         var json = JsonSerializer.Serialize(_cachedDeviceIds, new JsonSerializerOptions { WriteIndented = true });
         await File.WriteAllTextAsync(SettingsFile, json);
+        _lastWriteTimeUtc = File.GetLastWriteTimeUtc(SettingsFile);
+        _isLoaded = true;
     }
 }

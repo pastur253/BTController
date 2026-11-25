@@ -43,6 +43,11 @@ captures/
 *.jks
 *.keystore
 
+# Signing certificates and secrets
+*.pfx
+*.cer
+*_base64.txt
+
 # Log files
 *.log
 

@@ -107,7 +107,8 @@
                       "type": "TextBlock",
                       "text": "${name}",
                       "weight": "Bolder",
-                      "maxLines": 1
+                      "maxLines": 1,
+                      "wrap": true
                     },
                     {
                       "type": "TextBlock",

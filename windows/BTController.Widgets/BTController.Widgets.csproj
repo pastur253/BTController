@@ -20,8 +20,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="Templates\*.json">
+    <Content Include="Templates\*.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
   </ItemGroup>
 </Project>

@@ -38,9 +38,10 @@ public class WindowsBluetoothService : IBluetoothService
         {
             if (_isInitialized) return;
 
-            await RefreshPairedDevicesInternalAsync();
+            await RefreshPairedDevicesInternalAsync(notifyPerDevice: false);
             StartPairedDevicesWatcher();
             _isInitialized = true;
+            DevicesReloaded?.Invoke(this, EventArgs.Empty);
         }
         finally
         {
@@ -81,7 +82,7 @@ public class WindowsBluetoothService : IBluetoothService
         _pairedWatcher.Start();
     }
 
-    private async Task RefreshPairedDevicesInternalAsync()
+    private async Task RefreshPairedDevicesInternalAsync(bool notifyPerDevice = true)
     {
         try
         {
@@ -89,7 +90,7 @@ public class WindowsBluetoothService : IBluetoothService
             var devices = await DeviceInformation.FindAllAsync(selector, ["System.Devices.Aep.DeviceAddress", "System.Devices.Aep.IsConnected"]);
             foreach (var devInfo in devices)
             {
-                await ProcessOrUpdateDeviceAsync(devInfo.Id, devInfo);
+                await ProcessOrUpdateDeviceAsync(devInfo.Id, devInfo, notifyPerDevice);
             }
         }
         catch (Exception ex)
@@ -98,7 +99,7 @@ public class WindowsBluetoothService : IBluetoothService
         }
     }
 
-    private async Task<BluetoothDeviceModel?> ProcessOrUpdateDeviceAsync(string deviceId, DeviceInformation? devInfo = null)
+    private async Task<BluetoothDeviceModel?> ProcessOrUpdateDeviceAsync(string deviceId, DeviceInformation? devInfo = null, bool notify = true)
     {
         try
         {
@@ -138,7 +139,10 @@ public class WindowsBluetoothService : IBluetoothService
                 model.IsPaired = btDevice.DeviceInformation.Pairing.IsPaired;
                 model.IsInWidget = widgetIds.Contains(deviceId);
 
-                DeviceUpdated?.Invoke(this, model);
+                if (notify)
+                {
+                    DeviceUpdated?.Invoke(this, model);
+                }
                 return model;
             }
             else
@@ -182,7 +186,10 @@ public class WindowsBluetoothService : IBluetoothService
                     model.IsInWidget = widgetIds.Contains(deviceId);
                     model.DeviceType = GuessDeviceTypeFromName(name);
 
-                    DeviceUpdated?.Invoke(this, model);
+                    if (notify)
+                    {
+                        DeviceUpdated?.Invoke(this, model);
+                    }
                     return model;
                 }
 
@@ -354,12 +361,9 @@ public class WindowsBluetoothService : IBluetoothService
         {
             if (_activeBtDevices.TryRemove(deviceId, out var btDevice))
             {
+                btDevice.ConnectionStatusChanged -= OnDeviceConnectionStatusChanged;
                 btDevice.Dispose();
             }
-
-            // Force garbage collection of COM RCW to release radio ACL handles in Windows
-            GC.Collect();
-            GC.WaitForPendingFinalizers();
 
             if (model != null)
             {

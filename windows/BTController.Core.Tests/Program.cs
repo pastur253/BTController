@@ -212,8 +212,9 @@ class Program
 
         // Validate Adaptive Card Templates
         Console.WriteLine("\n--- 3b. Testing Adaptive Card Templates (Medium & Large) ---");
-        ValidateAdaptiveCardTemplate(@"D:\BTController\Templates\WidgetTemplateMedium.json", "Medium");
-        ValidateAdaptiveCardTemplate(@"D:\BTController\Templates\WidgetTemplateLarge.json", "Large");
+        string templatesDir = Path.Combine(AppContext.BaseDirectory, "Templates");
+        ValidateAdaptiveCardTemplate(Path.Combine(templatesDir, "WidgetTemplateMedium.json"), "Medium");
+        ValidateAdaptiveCardTemplate(Path.Combine(templatesDir, "WidgetTemplateLarge.json"), "Large");
     }
 
     private static void ValidateAdaptiveCardTemplate(string templatePath, string size)
@@ -304,6 +305,11 @@ class Program
             var secondServiceInstance = new WidgetPreferencesService();
             var reloadedList = await secondServiceInstance.GetWidgetDeviceIdsAsync();
             Assert(reloadedList.Count == 2 && reloadedList[0] == "dev-B" && reloadedList[1] == "dev-A", "Second instance reloads persisted devices from disk correctly");
+
+            // Test Cross-Process Reload when already loaded instance sees external update on disk
+            await secondServiceInstance.AddDeviceAsync("dev-D");
+            var crossProcessList = await service.GetWidgetDeviceIdsAsync();
+            Assert(crossProcessList.Count == 3 && crossProcessList[2] == "dev-D", "Already-loaded instance reloads external disk changes made by another process");
         }
         finally
         {
@@ -510,10 +516,13 @@ class Program
         Console.WriteLine("  7. Widget Subsystem & Adaptive Card Verification  ");
         Console.WriteLine("=================================================");
 
-        // 1. Verify Widget Definition & COM Server in AppxManifest.xml
-        Console.WriteLine("\n--- 7a. AppxManifest.xml Verification ---");
-        string manifestPath = @"D:\BTController\AppxManifest.xml";
-        Assert(File.Exists(manifestPath), $"Manifest exists at {manifestPath}");
+        // 1. Verify Widget Definition & COM Server in Package.appxmanifest
+        Console.WriteLine("\n--- 7a. Package.appxmanifest Verification ---");
+        string? windowsRoot = ResolveWindowsRoot();
+        string manifestPath = windowsRoot != null
+            ? Path.Combine(windowsRoot, "BTController.App", "Package.appxmanifest")
+            : string.Empty;
+        Assert(!string.IsNullOrEmpty(manifestPath) && File.Exists(manifestPath), $"Manifest exists at {manifestPath}");
 
         var doc = XDocument.Load(manifestPath);
         XNamespace ns = "http://schemas.microsoft.com/appx/manifest/foundation/windows10";
@@ -525,17 +534,19 @@ class Program
         if (comServer != null)
         {
             Assert(comServer.Attribute("Executable")?.Value == "BTController.App.exe", "COM ExeServer Executable is 'BTController.App.exe'");
+            Assert(comServer.Attribute("Arguments")?.Value == "-RegisterProcessAsComServer", "COM ExeServer Arguments is '-RegisterProcessAsComServer'");
             var comClass = comServer.Elements(com + "Class").FirstOrDefault();
             Assert(comClass?.Attribute("Id")?.Value.Equals("B7E209E3-4028-4822-8356-9A0191B95B11", StringComparison.OrdinalIgnoreCase) == true,
                 "COM Server ClassId matches B7E209E3-4028-4822-8356-9A0191B95B11");
         }
 
         var appExtension = doc.Descendants(uap3 + "AppExtension")
-            .FirstOrDefault(e => e.Attribute("Name")?.Value == "com.microsoft.windows.widgets.provider");
-        Assert(appExtension != null, "Widgets provider extension 'com.microsoft.windows.widgets.provider' exists");
+            .FirstOrDefault(e => e.Attribute("Name")?.Value == "com.microsoft.windows.widgets");
+        Assert(appExtension != null, "Widgets provider extension 'com.microsoft.windows.widgets' exists");
         if (appExtension != null)
         {
             Assert(appExtension.Attribute("Id")?.Value == "BTControllerWidgetProvider", "AppExtension Id is 'BTControllerWidgetProvider'");
+            Assert(!string.IsNullOrEmpty(appExtension.Attribute("PublicFolder")?.Value), "AppExtension specifies PublicFolder");
             var createInst = appExtension.Descendants().FirstOrDefault(e => e.Name.LocalName == "CreateInstance");
             Assert(createInst?.Attribute("ClassId")?.Value.Equals("B7E209E3-4028-4822-8356-9A0191B95B11", StringComparison.OrdinalIgnoreCase) == true,
                 "Widget Provider CreateInstance ClassId matches B7E209E3-4028-4822-8356-9A0191B95B11");
@@ -544,10 +555,15 @@ class Program
             Assert(widgetDef != null, "Widget Definition 'BTController_Widget' exists");
             if (widgetDef != null)
             {
-                Assert(widgetDef.Attribute("DefaultSize")?.Value == "medium", "Widget DefaultSize is 'medium'");
-                var capSizes = widgetDef.Descendants().Where(c => c.Name.LocalName == "Capability").Select(c => c.Attribute("Size")?.Value).ToHashSet();
-                Assert(capSizes.Contains("medium"), "Widget capability contains 'medium'");
-                Assert(capSizes.Contains("large"), "Widget capability contains 'large'");
+                Assert(widgetDef.Attribute("DefaultSize") == null, "Widget Definition omits invalid DefaultSize attribute");
+                Assert(widgetDef.Attribute("IsCustomizable")?.Value == "true", "Widget Definition sets IsCustomizable='true'");
+                var capSizes = widgetDef.Descendants()
+                    .Where(c => c.Name.LocalName == "Capability")
+                    .SelectMany(c => c.Elements().Where(s => s.Name.LocalName == "Size"))
+                    .Select(s => s.Attribute("Name")?.Value)
+                    .ToHashSet();
+                Assert(capSizes.Contains("medium"), "Widget capability contains <Size Name='medium' />");
+                Assert(capSizes.Contains("large"), "Widget capability contains <Size Name='large' />");
 
                 var iconPath = widgetDef.Descendants().FirstOrDefault(e => e.Name.LocalName == "Icon")?.Attribute("Path")?.Value;
                 Assert(iconPath == @"Assets\WidgetIcon.png", "Widget icon path is 'Assets\\WidgetIcon.png'");
@@ -558,7 +574,8 @@ class Program
 
         // 2. Verify Widget Asset Files
         Console.WriteLine("\n--- 7b. Widget Assets Verification ---");
-        string iconFullPath = @"D:\BTController\Assets\WidgetIcon.png";
+        string assetsDir = windowsRoot != null ? Path.Combine(windowsRoot, "BTController.App", "Assets") : string.Empty;
+        string iconFullPath = Path.Combine(assetsDir, "WidgetIcon.png");
         Assert(File.Exists(iconFullPath), $"WidgetIcon.png exists at {iconFullPath}");
         if (File.Exists(iconFullPath))
         {
@@ -568,7 +585,7 @@ class Program
             Assert(isPng, "WidgetIcon.png has valid PNG magic header");
         }
 
-        string screenshotFullPath = @"D:\BTController\Assets\WidgetScreenshot.png";
+        string screenshotFullPath = Path.Combine(assetsDir, "WidgetScreenshot.png");
         Assert(File.Exists(screenshotFullPath), $"WidgetScreenshot.png exists at {screenshotFullPath}");
         if (File.Exists(screenshotFullPath))
         {
@@ -580,7 +597,8 @@ class Program
 
         // 3. Verify Adaptive Card 1.5 Templates and Action Data
         Console.WriteLine("\n--- 7c. Adaptive Card 1.5 Template & Action Data Validation ---");
-        string[] templatePaths = { @"D:\BTController\Templates\WidgetTemplateMedium.json", @"D:\BTController\Templates\WidgetTemplateLarge.json" };
+        string templatesFolder = Path.Combine(AppContext.BaseDirectory, "Templates");
+        string[] templatePaths = { Path.Combine(templatesFolder, "WidgetTemplateMedium.json"), Path.Combine(templatesFolder, "WidgetTemplateLarge.json") };
         foreach (var tPath in templatePaths)
         {
             string name = Path.GetFileName(tPath);
@@ -730,5 +748,27 @@ class Program
                 CheckForToggleAction(item, ref found);
             }
         }
+    }
+
+    private static string? ResolveWindowsRoot()
+    {
+        foreach (var startDir in new[] { AppContext.BaseDirectory, Directory.GetCurrentDirectory() })
+        {
+            var dir = new DirectoryInfo(startDir);
+            while (dir != null)
+            {
+                if (File.Exists(Path.Combine(dir.FullName, "BTController.App", "Package.appxmanifest")))
+                {
+                    return dir.FullName;
+                }
+                string nested = Path.Combine(dir.FullName, "windows");
+                if (File.Exists(Path.Combine(nested, "BTController.App", "Package.appxmanifest")))
+                {
+                    return nested;
+                }
+                dir = dir.Parent;
+            }
+        }
+        return null;
     }
 }

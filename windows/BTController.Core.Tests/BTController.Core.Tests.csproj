@@ -17,11 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Reference Include="BTController.Core">
-      <HintPath>..\BTController.Core\bin\x64\Debug\net8.0-windows10.0.26100.0\BTController.Core.dll</HintPath>
-    </Reference>
-    <Reference Include="BTController.Widgets">
-      <HintPath>..\BTController.Widgets\bin\x64\Debug\net8.0-windows10.0.26100.0\BTController.Widgets.dll</HintPath>
-    </Reference>
+    <ProjectReference Include="..\BTController.Core\BTController.Core.csproj" />
+    <ProjectReference Include="..\BTController.Widgets\BTController.Widgets.csproj" />
   </ItemGroup>
 </Project>

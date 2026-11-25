@@ -4,6 +4,30 @@
 
 ---
 
+## [1.1.1] - 2026-11-25
+
+### Добавлено
+- **Единый кроссплатформенный релиз `v1.1.1`** (Android APK + Windows 11 Single-Project MSIX):
+  - Автоматическая сборка и публикация подписанного MSIX-пакета `BTController-Windows-x64.msix` (и сертификата `.cer` при наличии) в GitHub Releases.
+  - Синхронизированы версии Android (`versionCode 5`, `versionName 1.1.1`) и Windows (`1.1.1.0`) для корректной работы автообновления и единых ссылок загрузки.
+
+### Исправлено
+- **Виджет Windows 11 (`Win + W` / Widgets Board)**:
+  - Исправлена схема расширения `Package.appxmanifest` (`Name="com.microsoft.windows.widgets"`, `PublicFolder="Assets"`, `Arguments="-RegisterProcessAsComServer"`, корректная структура `<Capability><Size Name="..." /></Capability>` и `IsCustomizable="true"`).
+  - Реализован внепроцессный COM-сервер (`ComServer.cs`, `IClassFactory`, `CoRegisterClassObject`, headless-режим в `Program.cs` с `STAThread`/MTA-безопасностью) для активации `BluetoothWidgetProvider` через `Win + W`.
+  - Исправлен жизненный цикл виджета (`GetWidgetInfos()` восстановление при перезапуске, `Deactivate`, потокобезопасность `ActiveWidgets`, перезагрузка настроек в `WidgetPreferencesService`).
+  - Переход на **Single-Project MSIX** (`WindowsPackageType=MSIX`) с корректным копированием шаблонов Adaptive Cards (`Templates/*.json`) в пакет.
+
+---
+
+## [1.1.0] - 2026-11-22
+
+### Добавлено
+- Начальная версия клиента для **Windows 11** на базе WinUI 3 (`BTController.App`, `BTController.Widgets`, `BTController.Core`).
+- Поддержка управления Bluetooth-устройствами через WinRT API и задел для виджета `Win + W` *(обнаружение виджета в Windows Widgets Board исправлено в `1.1.1`)*.
+
+---
+
 ## [1.0.3] - 2026-11-17
 
 ### Добавлено
