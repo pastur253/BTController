@@ -1,65 +1,33 @@
 using System;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
-using System.IO.Compression;
 using System.Reflection;
+using System.Security.Cryptography.X509Certificates;
+using System.Threading.Tasks;
 using System.Windows;
-using Microsoft.Win32;
 
 namespace BTController.Installer;
 
 public partial class MainWindow : Window
 {
-    private string _targetDirectory = string.Empty;
-
     public MainWindow()
     {
         InitializeComponent();
-
-        // Default path: ProgramFiles or LocalAppData
-        string defaultPath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "Programs",
-            "BTController");
-
-        TxtPath.Text = defaultPath;
-    }
-
-    private void BtnBrowse_Click(object sender, RoutedEventArgs e)
-    {
-        var dialog = new OpenFolderDialog
-        {
-            Title = "Выберите папку для установки Bluetooth Controller",
-            InitialDirectory = Directory.Exists(TxtPath.Text) ? TxtPath.Text : Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles)
-        };
-
-        if (dialog.ShowDialog() == true)
-        {
-            TxtPath.Text = Path.Combine(dialog.FolderName, "BTController");
-        }
     }
 
     private async void BtnInstall_Click(object sender, RoutedEventArgs e)
     {
-        _targetDirectory = TxtPath.Text.Trim();
-        if (string.IsNullOrWhiteSpace(_targetDirectory))
-        {
-            MessageBox.Show("Пожалуйста, укажите папку для установки.", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
-            return;
-        }
-
         ConfigPanel.Visibility = Visibility.Collapsed;
         ProgressPanel.Visibility = Visibility.Visible;
         BtnInstall.IsEnabled = false;
         BtnCancel.IsEnabled = false;
 
-        bool desktopShortcut = ChkDesktopShortcut.IsChecked == true;
-        bool startMenuShortcut = ChkStartMenuShortcut.IsChecked == true;
         bool launchAfter = ChkLaunchAfter.IsChecked == true;
 
         try
         {
-            await Task.Run(() => PerformInstallation(_targetDirectory, desktopShortcut, startMenuShortcut));
+            await Task.Run(PerformInstallation);
 
             ProgressPanel.Visibility = Visibility.Collapsed;
             SuccessPanel.Visibility = Visibility.Visible;
@@ -69,10 +37,17 @@ public partial class MainWindow : Window
 
             if (launchAfter)
             {
-                string exePath = Path.Combine(_targetDirectory, "BTController.App.exe");
-                if (File.Exists(exePath))
+                try
                 {
-                    Process.Start(new ProcessStartInfo { FileName = exePath, UseShellExecute = true });
+                    Process.Start(new ProcessStartInfo
+                    {
+                        FileName = "btcontroller://",
+                        UseShellExecute = true
+                    });
+                }
+                catch
+                {
+                    // App is installed in Start Menu even if protocol launch fails
                 }
             }
         }
@@ -86,45 +61,124 @@ public partial class MainWindow : Window
         }
     }
 
-    private void PerformInstallation(string targetDir, bool desktopShortcut, bool startMenuShortcut)
+    private void PerformInstallation()
     {
-        UpdateStatus("Создание папки установки...");
-        Directory.CreateDirectory(targetDir);
+        string tempDir = Path.Combine(Path.GetTempPath(), $"BTController-Setup-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDir);
 
-        UpdateStatus("Распаковка файлов приложения...");
+        try
+        {
+            UpdateStatus("Распаковка пакета установки...");
+            string cerPath = Path.Combine(tempDir, "BTController-Windows-x64.cer");
+            string msixPath = Path.Combine(tempDir, "BTController-Windows-x64.msix");
+
+            ExtractEmbeddedResource("BTController.cer", cerPath);
+            ExtractEmbeddedResource("BTController.msix", msixPath);
+
+            UpdateStatus("Проверка и установка сертификата подписи...");
+            EnsureCertificateTrusted(cerPath);
+
+            UpdateStatus("Установка MSIX-пакета Bluetooth Controller...");
+            InstallMsixPackage(msixPath);
+        }
+        finally
+        {
+            try
+            {
+                if (Directory.Exists(tempDir))
+                {
+                    Directory.Delete(tempDir, recursive: true);
+                }
+            }
+            catch
+            {
+                // Ignore temp cleanup errors
+            }
+        }
+    }
+
+    private static void ExtractEmbeddedResource(string resourceName, string destinationPath)
+    {
         var assembly = Assembly.GetExecutingAssembly();
-        using (var stream = assembly.GetManifestResourceStream("app.zip"))
+        using var stream = assembly.GetManifestResourceStream(resourceName)
+            ?? throw new InvalidOperationException($"В установщике отсутствует встроенный ресурс '{resourceName}'.");
+        using var fileStream = File.Create(destinationPath);
+        stream.CopyTo(fileStream);
+    }
+
+    private static void EnsureCertificateTrusted(string cerPath)
+    {
+        using var cert = new X509Certificate2(cerPath);
+        if (IsCertificateInStore(cert.Thumbprint, StoreName.TrustedPeople, StoreLocation.LocalMachine) ||
+            IsCertificateInStore(cert.Thumbprint, StoreName.Root, StoreLocation.LocalMachine))
         {
-            if (stream == null)
+            return;
+        }
+
+        try
+        {
+            var psi = new ProcessStartInfo
             {
-                throw new InvalidOperationException("Пакет установки не содержит встроенного архива приложения (app.zip).");
-            }
+                FileName = "certutil.exe",
+                Arguments = $"-addstore TrustedPeople \"{cerPath}\"",
+                Verb = "runas",
+                UseShellExecute = true,
+                WindowStyle = ProcessWindowStyle.Hidden
+            };
 
-            using (var zip = new ZipArchive(stream, ZipArchiveMode.Read))
+            using var proc = Process.Start(psi)
+                ?? throw new InvalidOperationException("Не удалось запустить certutil.exe для установки сертификата.");
+            proc.WaitForExit();
+
+            if (proc.ExitCode != 0)
             {
-                zip.ExtractToDirectory(targetDir, overwriteFiles: true);
+                throw new InvalidOperationException($"certutil.exe завершился с кодом {proc.ExitCode}.");
             }
         }
-
-        string appExe = Path.Combine(targetDir, "BTController.App.exe");
-
-        UpdateStatus("Создание ярлыков...");
-        if (desktopShortcut)
+        catch (Win32Exception ex) when (ex.NativeErrorCode == 1223)
         {
-            string desktopDir = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
-            CreateShortcut(Path.Combine(desktopDir, "Bluetooth Controller.lnk"), appExe, targetDir);
+            throw new InvalidOperationException("Установка сертификата отменена пользователем (UAC).", ex);
         }
+    }
 
-        if (startMenuShortcut)
+    private static bool IsCertificateInStore(string thumbprint, StoreName storeName, StoreLocation location)
+    {
+        try
         {
-            string startMenuDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.StartMenu), "Programs");
-            CreateShortcut(Path.Combine(startMenuDir, "Bluetooth Controller.lnk"), appExe, targetDir);
+            using var store = new X509Store(storeName, location);
+            store.Open(OpenFlags.ReadOnly);
+            return store.Certificates.Find(X509FindType.FindByThumbprint, thumbprint, validOnly: false).Count > 0;
         }
+        catch
+        {
+            return false;
+        }
+    }
 
-        UpdateStatus("Регистрация программы в системе...");
-        RegisterSparsePackage(targetDir);
-        RegisterProtocol(appExe);
-        RegisterUninstaller(targetDir, appExe);
+    private static void InstallMsixPackage(string msixPath)
+    {
+        string escapedPath = msixPath.Replace("'", "''");
+        var psi = new ProcessStartInfo
+        {
+            FileName = "powershell.exe",
+            Arguments = $"-NoProfile -ExecutionPolicy Bypass -Command \"Add-AppxPackage -Path '{escapedPath}' -ForceApplicationShutdown\"",
+            CreateNoWindow = true,
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true
+        };
+
+        using var proc = Process.Start(psi)
+            ?? throw new InvalidOperationException("Не удалось запустить PowerShell для установки MSIX-пакета.");
+        string stdout = proc.StandardOutput.ReadToEnd();
+        string stderr = proc.StandardError.ReadToEnd();
+        proc.WaitForExit();
+
+        if (proc.ExitCode != 0)
+        {
+            string details = string.IsNullOrWhiteSpace(stderr) ? stdout : stderr;
+            throw new InvalidOperationException($"Add-AppxPackage завершился с кодом {proc.ExitCode}:\n{details.Trim()}");
+        }
     }
 
     private void UpdateStatus(string message)
@@ -135,127 +189,7 @@ public partial class MainWindow : Window
         });
     }
 
-    private static void CreateShortcut(string shortcutPath, string targetExePath, string workingDirectory)
-    {
-        try
-        {
-            Type? shellType = Type.GetTypeFromProgID("WScript.Shell");
-            if (shellType == null) return;
+    private void BtnFinish_Click(object sender, RoutedEventArgs e) => Close();
 
-            dynamic? shell = Activator.CreateInstance(shellType);
-            if (shell == null) return;
-
-            dynamic shortcut = shell.CreateShortcut(shortcutPath);
-            shortcut.TargetPath = targetExePath;
-            shortcut.WorkingDirectory = workingDirectory;
-            shortcut.Description = "Управление Bluetooth устройствами и виджет для Windows 11";
-            shortcut.Save();
-        }
-        catch
-        {
-            // Ignore shortcut creation failures
-        }
-    }
-
-    private static void RegisterSparsePackage(string targetDir)
-    {
-        try
-        {
-            // 1. Automatically enable Developer Mode in HKLM so unsigned sparse package can be registered
-            try
-            {
-                using var key = Registry.LocalMachine.CreateSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock");
-                if (key != null)
-                {
-                    object? val = key.GetValue("AllowDevelopmentWithoutDevLicense");
-                    if (val == null || (int)val != 1)
-                    {
-                        key.SetValue("AllowDevelopmentWithoutDevLicense", 1, RegistryValueKind.DWord);
-                    }
-                }
-            }
-            catch
-            {
-                // Fall back if permission denied
-            }
-
-            // 2. Prepare AppxManifest.xml
-            string manifestPath = Path.Combine(targetDir, "AppxManifest.xml");
-            if (!File.Exists(manifestPath))
-            {
-                string oldManifest = Path.Combine(targetDir, "Package.appxmanifest");
-                if (File.Exists(oldManifest))
-                {
-                    File.Copy(oldManifest, manifestPath, true);
-                }
-            }
-
-            // 3. Register package with external location
-            if (File.Exists(manifestPath))
-            {
-                var psi = new ProcessStartInfo
-                {
-                    FileName = "powershell",
-                    Arguments = $"-NoProfile -ExecutionPolicy Bypass -Command \"Add-AppxPackage -Register '{manifestPath}' -ExternalLocation '{targetDir}'\"",
-                    CreateNoWindow = true,
-                    UseShellExecute = false
-                };
-                using var proc = Process.Start(psi);
-                proc?.WaitForExit();
-            }
-        }
-        catch { }
-    }
-
-    private static void RegisterProtocol(string appExePath)
-    {
-        try
-        {
-            using var key = Registry.CurrentUser.CreateSubKey(@"Software\Classes\btcontroller");
-            key.SetValue("", "URL:Bluetooth Controller Protocol");
-            key.SetValue("URL Protocol", "");
-
-            using var shellKey = key.CreateSubKey(@"shell\open\command");
-            shellKey.SetValue("", $"\"{appExePath}\" \"%1\"");
-        }
-        catch { }
-    }
-
-    private static void RegisterUninstaller(string installDir, string appExePath)
-    {
-        try
-        {
-            string uninstallScriptPath = Path.Combine(installDir, "uninstall.cmd");
-            File.WriteAllText(uninstallScriptPath,
-                $"@echo off\r\n" +
-                $"taskkill /F /IM BTController.App.exe 2>nul\r\n" +
-                $"powershell -Command \"Get-AppxPackage *BTController* | Remove-AppxPackage\" 2>nul\r\n" +
-                $"timeout /t 1 /nobreak >nul\r\n" +
-                $"reg delete \"HKCU\\Software\\Classes\\btcontroller\" /f 2>nul\r\n" +
-                $"reg delete \"HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\BTController\" /f 2>nul\r\n" +
-                $"del /f /q \"{Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory)}\\Bluetooth Controller.lnk\" 2>nul\r\n" +
-                $"del /f /q \"{Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.StartMenu), "Programs")}\\Bluetooth Controller.lnk\" 2>nul\r\n" +
-                $"echo Удаление файлов...\r\n" +
-                $"(goto) 2>nul & rmdir /s /q \"{installDir}\"\r\n");
-
-            using var key = Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\BTController");
-            key.SetValue("DisplayName", "Bluetooth Controller");
-            key.SetValue("DisplayIcon", appExePath);
-            key.SetValue("DisplayVersion", "1.0.0");
-            key.SetValue("Publisher", "BTController");
-            key.SetValue("InstallLocation", installDir);
-            key.SetValue("UninstallString", $"cmd.exe /c \"{uninstallScriptPath}\"");
-        }
-        catch { }
-    }
-
-    private void BtnFinish_Click(object sender, RoutedEventArgs e)
-    {
-        Close();
-    }
-
-    private void BtnCancel_Click(object sender, RoutedEventArgs e)
-    {
-        Close();
-    }
+    private void BtnCancel_Click(object sender, RoutedEventArgs e) => Close();
 }

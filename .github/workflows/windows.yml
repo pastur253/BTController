@@ -101,6 +101,13 @@ jobs:
             Copy-Item -Path $cerFile.FullName -Destination (Join-Path $releaseDir "BTController-Windows-x64.cer") -Force
           }
 
+      - name: Publish Windows Unified Setup Executable
+        shell: pwsh
+        run: |
+          dotnet publish windows/BTController.Installer/BTController.Installer.csproj -c Release -r win-x64 --self-contained true -p:Platform=x64 -o windows/artifacts/installer
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Copy-Item "windows/artifacts/installer/BTController-Setup.exe" "windows/artifacts/release/BTController-Setup.exe" -Force
+
       - name: Cleanup PFX Certificate
         if: always() && steps.cert.outputs.has_cert == 'true'
         shell: pwsh
@@ -113,19 +120,24 @@ jobs:
             Remove-Item "Cert:\CurrentUser\My\$thumb" -Force
           }
 
-      - name: Upload MSIX Artifact
+      - name: Upload Windows Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: BTController-MSIX
-          path: windows/artifacts/release/BTController-Windows-x64.*
+          name: BTController-Windows
+          path: |
+            windows/artifacts/release/BTController-Setup.exe
+            windows/artifacts/release/BTController-Windows-x64.msix
+            windows/artifacts/release/BTController-Windows-x64.cer
           if-no-files-found: error
 
-      - name: Attach MSIX to GitHub Release
+      - name: Attach Windows Installer to GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            windows/artifacts/release/BTController-Windows-x64.*
+            windows/artifacts/release/BTController-Setup.exe
+            windows/artifacts/release/BTController-Windows-x64.msix
+            windows/artifacts/release/BTController-Windows-x64.cer
           generate_release_notes: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

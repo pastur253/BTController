@@ -20,8 +20,8 @@
     <img src="https://img.shields.io/badge/Скачать%20для-Android%20(APK)-3DDC84?style=for-the-badge&logo=android&logoColor=white" alt="Скачать для Android" />
   </a>
   &nbsp;&nbsp;&nbsp;&nbsp;
-  <a href="https://github.com/pastur253/BTController/releases/latest/download/BTController-Windows-x64.msix">
-    <img src="https://img.shields.io/badge/Скачать%20для-Windows%20(MSIX)-0078D4?style=for-the-badge&logo=windows11&logoColor=white" alt="Скачать для Windows" />
+  <a href="https://github.com/pastur253/BTController/releases/latest/download/BTController-Setup.exe">
+    <img src="https://img.shields.io/badge/Скачать%20для-Windows%20(Setup.exe)-0078D4?style=for-the-badge&logo=windows11&logoColor=white" alt="Скачать для Windows" />
   </a>
 </p>
 
@@ -30,7 +30,7 @@
 | Платформа | Кнопка скачивания | Файл | Описание |
 | :--- | :--- | :--- | :--- |
 | **Android** | [![Скачать APK](https://img.shields.io/badge/Скачать-APK-3DDC84?style=flat-square&logo=android&logoColor=white)](https://github.com/pastur253/BTController/releases/latest/download/BTController-release.apk) | `BTController-release.apk` | Клиент Jetpack Compose и домашний виджет (Android 8.0+) |
-| **Windows 11** | [![Скачать MSIX](https://img.shields.io/badge/Скачать-MSIX-0078D4?style=flat-square&logo=windows11&logoColor=white)](https://github.com/pastur253/BTController/releases/latest/download/BTController-Windows-x64.msix) | `BTController-Windows-x64.msix` | MSIX-пакет WinUI 3 приложения и виджета панели задач (`Win + W`) |
+| **Windows 11** | [![Скачать Setup.exe](https://img.shields.io/badge/Скачать-Setup.exe-0078D4?style=flat-square&logo=windows11&logoColor=white)](https://github.com/pastur253/BTController/releases/latest/download/BTController-Setup.exe) | `BTController-Setup.exe` | Единый установщик (сертификат + MSIX + виджет `Win + W`) |
 
 > [!TIP]
 > Все версии, исходные коды и подробный список изменений доступны в разделе **[GitHub Releases](https://github.com/pastur253/BTController/releases)**.

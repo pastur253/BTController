@@ -18,8 +18,13 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="..\artifacts\app.zip">
-      <LogicalName>app.zip</LogicalName>
+    <EmbeddedResource Include="..\artifacts\release\BTController-Windows-x64.msix"
+                      Condition="Exists('..\artifacts\release\BTController-Windows-x64.msix')">
+      <LogicalName>BTController.msix</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\artifacts\release\BTController-Windows-x64.cer"
+                      Condition="Exists('..\artifacts\release\BTController-Windows-x64.cer')">
+      <LogicalName>BTController.cer</LogicalName>
     </EmbeddedResource>
   </ItemGroup>
 </Project>
