@@ -38,22 +38,28 @@ jobs:
         shell: pwsh
         env:
           PFX_BASE64: ${{ secrets.WINDOWS_PFX_BASE64 }}
+          PFX_PASSWORD: ${{ secrets.WINDOWS_PFX_PASSWORD }}
         run: |
           if (-not [string]::IsNullOrWhiteSpace($env:PFX_BASE64)) {
             $pfxPath = "$env:RUNNER_TEMP\signing.pfx"
             [IO.File]::WriteAllBytes($pfxPath, [Convert]::FromBase64String($env:PFX_BASE64))
+            if ([string]::IsNullOrEmpty($env:PFX_PASSWORD)) {
+              $imported = Import-PfxCertificate -FilePath $pfxPath -CertStoreLocation "Cert:\CurrentUser\My" -Exportable
+            } else {
+              $securePass = ConvertTo-SecureString -String $env:PFX_PASSWORD -Force -AsPlainText
+              $imported = Import-PfxCertificate -FilePath $pfxPath -CertStoreLocation "Cert:\CurrentUser\My" -Password $securePass -Exportable
+            }
             "has_cert=true" >> $env:GITHUB_OUTPUT
             "pfx_path=$pfxPath" >> $env:GITHUB_OUTPUT
+            "thumbprint=$($imported.Thumbprint)" >> $env:GITHUB_OUTPUT
           } else {
             "has_cert=false" >> $env:GITHUB_OUTPUT
           }
 
       - name: Build WinUI 3 MSIX Package
         shell: pwsh
-        env:
-          PFX_PASSWORD: ${{ secrets.WINDOWS_PFX_PASSWORD }}
         run: |
-          $msixOutDir = Join-Path $pwd "windows\artifacts\msix"
+          $msixOutDir = (Join-Path $pwd "windows\artifacts\msix") + "\"
           $msbuildArgs = @(
             "windows/BTController.App/BTController.App.csproj",
             "-t:Restore,Build",
@@ -66,8 +72,7 @@ jobs:
 
           if ("${{ steps.cert.outputs.has_cert }}" -eq "true") {
             $msbuildArgs += "-p:AppxPackageSigningEnabled=true"
-            $msbuildArgs += "-p:PackageCertificateKeyFile=${{ steps.cert.outputs.pfx_path }}"
-            $msbuildArgs += "-p:PackageCertificatePassword=$env:PFX_PASSWORD"
+            $msbuildArgs += "-p:PackageCertificateThumbprint=${{ steps.cert.outputs.thumbprint }}"
           } else {
             $msbuildArgs += "-p:AppxPackageSigningEnabled=false"
           }
@@ -102,6 +107,10 @@ jobs:
         run: |
           if (Test-Path "${{ steps.cert.outputs.pfx_path }}") {
             Remove-Item "${{ steps.cert.outputs.pfx_path }}" -Force
+          }
+          $thumb = "${{ steps.cert.outputs.thumbprint }}"
+          if (-not [string]::IsNullOrWhiteSpace($thumb) -and (Test-Path "Cert:\CurrentUser\My\$thumb")) {
+            Remove-Item "Cert:\CurrentUser\My\$thumb" -Force
           }
 
       - name: Upload MSIX Artifact
