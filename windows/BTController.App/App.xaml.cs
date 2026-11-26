@@ -39,10 +39,12 @@ public partial class App : Application
 {
     private static readonly Lazy<WidgetPreferencesService> LazyWidgetPreferences = new(() => new WidgetPreferencesService());
     private static readonly Lazy<IBluetoothService> LazyBluetoothService = new(() => new WindowsBluetoothService(WidgetPreferences));
+    private static readonly Lazy<Services.UpdateService> LazyUpdateService = new(() => new Services.UpdateService());
 
     public static MainWindow? MainWindow { get; private set; }
     public static WidgetPreferencesService WidgetPreferences => LazyWidgetPreferences.Value;
     public static IBluetoothService BluetoothService => LazyBluetoothService.Value;
+    public static Services.UpdateService UpdateService => LazyUpdateService.Value;
 
     public App()
     {

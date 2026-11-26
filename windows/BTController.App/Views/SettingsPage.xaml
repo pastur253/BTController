@@ -64,26 +64,43 @@
                     BorderThickness="1"
                     CornerRadius="8"
                     Padding="20">
-                <Grid ColumnDefinitions="*,Auto">
-                    <StackPanel Spacing="4">
-                        <TextBlock Text="Обновление приложения" FontWeight="SemiBold" FontSize="16" />
-                        <TextBlock Text="{x:Bind ViewModel.UpdateStatus, Mode=OneWay}"
-                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                        <TextBlock Text="{x:Bind ViewModel.AppVersion, Mode=OneWay}"
-                                   FontSize="12"
-                                   Foreground="{ThemeResource TextFillColorTertiaryBrush}"
-                                   Margin="0,4,0,0" />
-                    </StackPanel>
-
-                    <Button Grid.Column="1"
-                            Command="{x:Bind ViewModel.CheckUpdateCommand}"
-                            IsEnabled="{x:Bind ViewModel.CanCheckUpdate, Mode=OneWay}">
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <FontIcon Glyph="&#xE895;" FontSize="14" />
-                            <TextBlock Text="Проверить" />
+                <StackPanel Spacing="12">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="Обновление приложения" FontWeight="SemiBold" FontSize="16" />
+                            <TextBlock Text="{x:Bind ViewModel.UpdateStatus, Mode=OneWay}"
+                                       TextWrapping="Wrap"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            <TextBlock Text="{x:Bind ViewModel.AppVersion, Mode=OneWay}"
+                                       FontSize="12"
+                                       Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                                       Margin="0,4,0,0" />
                         </StackPanel>
-                    </Button>
-                </Grid>
+
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                            <Button Style="{ThemeResource AccentButtonStyle}"
+                                    Visibility="{x:Bind ViewModel.DownloadButtonVisibility, Mode=OneWay}"
+                                    Command="{x:Bind ViewModel.DownloadAndInstallCommand}">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <FontIcon Glyph="&#xE896;" FontSize="14" />
+                                    <TextBlock Text="{x:Bind ViewModel.DownloadButtonText, Mode=OneWay}" />
+                                </StackPanel>
+                            </Button>
+
+                            <Button Command="{x:Bind ViewModel.CheckUpdateCommand}"
+                                    IsEnabled="{x:Bind ViewModel.CanCheckUpdate, Mode=OneWay}">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <FontIcon Glyph="&#xE895;" FontSize="14" />
+                                    <TextBlock Text="Проверить" />
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </Grid>
+
+                    <ProgressBar Value="{x:Bind ViewModel.DownloadProgress, Mode=OneWay}"
+                                 Maximum="100"
+                                 Visibility="{x:Bind ViewModel.DownloadProgressVisibility, Mode=OneWay}" />
+                </StackPanel>
             </Border>
 
             <!-- About Card -->

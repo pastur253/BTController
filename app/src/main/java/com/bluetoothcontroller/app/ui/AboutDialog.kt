@@ -5,8 +5,10 @@ import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -60,6 +62,7 @@ fun AboutDialog(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
                     .padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
@@ -134,41 +137,50 @@ fun AboutDialog(
                         )
 
                         // GitHub Link Row
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(8.dp))
-                                .clickable {
-                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(githubUrl))
-                                    context.startActivity(intent)
-                                }
-                                .padding(vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = "GitHub репозиторий",
-                                    fontSize = 11.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                Text(
-                                    text = githubUrl.removePrefix("https://"),
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    color = PrimaryBlue,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
+                        LinkItem(
+                            label = "GitHub репозиторий",
+                            value = githubUrl.removePrefix("https://"),
+                            onClick = {
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(githubUrl))
+                                context.startActivity(intent)
                             }
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Icon(
-                                painter = painterResource(R.drawable.ic_open_in_new),
-                                contentDescription = "Открыть в браузере",
-                                tint = PrimaryBlue,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
+                        )
+
+                        HorizontalDivider(
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                            thickness = 1.dp
+                        )
+
+                        // Feedback Section
+                        Text(
+                            text = "Обратная связь",
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+
+                        LinkItem(
+                            label = "GitHub Issues",
+                            value = "Сообщить об ошибке",
+                            onClick = {
+                                val intent = Intent(
+                                    Intent.ACTION_VIEW,
+                                    Uri.parse("$githubUrl/issues/new?template=bug_report.md")
+                                )
+                                context.startActivity(intent)
+                            }
+                        )
+
+                        LinkItem(
+                            label = "GitHub Issues",
+                            value = "Предложить функцию",
+                            onClick = {
+                                val intent = Intent(
+                                    Intent.ACTION_VIEW,
+                                    Uri.parse("$githubUrl/issues/new?template=feature_request.md")
+                                )
+                                context.startActivity(intent)
+                            }
+                        )
                     }
                 }
 
@@ -289,6 +301,46 @@ fun AboutDialog(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun LinkItem(
+    label: String,
+    value: String,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .clickable(onClick = onClick)
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = label,
+                fontSize = 11.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = value,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
+                color = PrimaryBlue,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        Spacer(modifier = Modifier.width(8.dp))
+        Icon(
+            painter = painterResource(R.drawable.ic_open_in_new),
+            contentDescription = "Открыть в браузере",
+            tint = PrimaryBlue,
+            modifier = Modifier.size(18.dp)
+        )
     }
 }
 

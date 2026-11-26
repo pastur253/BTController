@@ -54,7 +54,20 @@
                 </NavigationViewItem>
             </NavigationView.MenuItems>
 
-            <Frame x:Name="ContentFrame" Margin="24,12,24,24" />
+            <Grid Margin="24,12,24,24" RowDefinitions="Auto,*">
+                <InfoBar x:Name="UpdateInfoBar"
+                         Grid.Row="0"
+                         IsOpen="False"
+                         IsClosable="True"
+                         Severity="Informational"
+                         Margin="0,0,0,12">
+                    <InfoBar.ActionButton>
+                        <Button Content="Обновить" Click="UpdateNowButton_Click" />
+                    </InfoBar.ActionButton>
+                </InfoBar>
+
+                <Frame x:Name="ContentFrame" Grid.Row="1" />
+            </Grid>
         </NavigationView>
     </Grid>
 </Window>
