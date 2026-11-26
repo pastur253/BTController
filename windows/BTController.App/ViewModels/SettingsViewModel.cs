@@ -9,6 +9,14 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     public partial string AppVersion { get; set; } = "1.0.0 (Windows 11 WinUI 3)";
 
+    public string DeveloperName => "PasturTheFox";
+
+    public string GitHubUrl => "https://github.com/pastur253/BTController";
+
+    public string BugReportUrl => "https://github.com/pastur253/BTController/issues/new?template=bug_report.md";
+
+    public string FeatureRequestUrl => "https://github.com/pastur253/BTController/issues/new?template=feature_request.md";
+
     [ObservableProperty]
     public partial string UpdateStatus { get; set; } = "У вас установлена актуальная версия";
 

@@ -85,6 +85,74 @@
                     </Button>
                 </Grid>
             </Border>
+
+            <!-- About Card -->
+            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Padding="20">
+                <StackPanel Spacing="16">
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <FontIcon Glyph="&#xE946;" FontSize="24" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                        <StackPanel>
+                            <TextBlock Text="О приложении" FontWeight="SemiBold" FontSize="16" />
+                            <TextBlock Text="Информация о разработчике, исходном коде и обратной связи"
+                                       Style="{ThemeResource CaptionTextBlockStyle}"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        </StackPanel>
+                    </StackPanel>
+
+                    <MenuFlyoutSeparator />
+
+                    <!-- Developer -->
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Text="Разработчик"
+                                   VerticalAlignment="Center"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        <TextBlock Grid.Column="1"
+                                   Text="{x:Bind ViewModel.DeveloperName}"
+                                   FontWeight="SemiBold"
+                                   VerticalAlignment="Center" />
+                    </Grid>
+
+                    <MenuFlyoutSeparator />
+
+                    <!-- GitHub -->
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Spacing="2" VerticalAlignment="Center">
+                            <TextBlock Text="GitHub репозиторий" />
+                            <TextBlock Text="Исходный код и релизы проекта"
+                                       Style="{ThemeResource CaptionTextBlockStyle}"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        </StackPanel>
+                        <HyperlinkButton Grid.Column="1"
+                                         Content="github.com/pastur253/BTController"
+                                         NavigateUri="{x:Bind ViewModel.GitHubUrl}"
+                                         VerticalAlignment="Center" />
+                    </Grid>
+
+                    <MenuFlyoutSeparator />
+
+                    <!-- Feedback -->
+                    <StackPanel Spacing="10">
+                        <StackPanel Spacing="2">
+                            <TextBlock Text="Обратная связь" />
+                            <TextBlock Text="Создать Issue на GitHub: сообщить об ошибке или предложить новую функцию"
+                                       Style="{ThemeResource CaptionTextBlockStyle}"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <HyperlinkButton Content="Сообщить об ошибке"
+                                             NavigateUri="{x:Bind ViewModel.BugReportUrl}"
+                                             Padding="12,6" />
+                            <HyperlinkButton Content="Предложить функцию"
+                                             NavigateUri="{x:Bind ViewModel.FeatureRequestUrl}"
+                                             Padding="12,6" />
+                        </StackPanel>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
         </StackPanel>
     </ScrollViewer>
 </Page>
